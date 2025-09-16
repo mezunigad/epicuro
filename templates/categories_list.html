@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}Categorías - Epicuro{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-tags me-3"></i>
+                    Gestión de Categorías
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">Organiza tus productos por categorías</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('new_category') }}" class="btn btn-light btn-lg">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    Nueva Categoría
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Categorías -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list me-2"></i>
+            Lista de Categorías
+        </h5>
+        <span class="badge bg-primary">{{ categories|length }} categorías</span>
+    </div>
+    <div class="card-body p-0">
+        {% if categories %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Categoría</th>
+                            <th>Color</th>
+                            <th>Productos</th>
+                            <th>Estado</th>
+                            <th>Fecha Creación</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in categories %}
+                        <tr class="{{ 'table-secondary' if not category.active }}">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="category-color-preview me-3" 
+                                         style="width: 20px; height: 20px; border-radius: 50%; background-color: {{ category.color or '#6c757d' }};"></div>
+                                    <div>
+                                        <strong>{{ category.name }}</strong>
+                                        {% if category.description %}
+                                            <br><small class="text-muted">{{ category.description }}</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="color-sample me-2" 
+                                         style="width: 30px; height: 30px; border-radius: 5px; background-color: {{ category.color or '#6c757d' }}; border: 1px solid #dee2e6;"></div>
+                                    <code>{{ category.color or '#6c757d' }}</code>
+                                </div>
+                            </td>
+                            <td>
+                                {% if category.product_count > 0 %}
+                                    <span class="badge bg-info">
+                                        <i class="fas fa-box me-1"></i>{{ category.product_count }} productos
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Sin productos</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if category.active %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>Activa
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-times me-1"></i>Inactiva
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {% if category.created_at %}
+                                        {% if category.created_at is string %}
+                                            {{ category.created_at.split(' ')[0] }}
+                                        {% else %}
+                                            {{ category.created_at.strftime('%d/%m/%Y') }}
+                                        {% endif %}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('edit_category', category_id=category.id) }}" 
+                                       class="btn btn-sm btn-outline-primary" 
+                                       title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if category.active %}
+                                        <button class="btn btn-sm btn-outline-warning" 
+                                                onclick="toggleCategory({{ category.id }}, false)"
+                                                title="Desactivar">
+                                            <i class="fas fa-eye-slash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-success" 
+                                                onclick="toggleCategory({{ category.id }}, true)"
+                                                title="Activar">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    {% endif %}
+                                    {% if category.product_count == 0 %}
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                onclick="deleteCategory({{ category.id }}, '{{ category.name }}')"
+                                                title="Eliminar">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-secondary" 
+                                                disabled
+                                                title="No se puede eliminar: tiene productos asociados">
+                                            <i class="fas fa-lock"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-tags fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">No hay categorías registradas</h4>
+                <p class="text-muted">Crea categorías para organizar mejor tus productos</p>
+                <a href="{{ url_for('new_category') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Crear Primera Categoría
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Acciones rápidas -->
+<div class="row mt-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-bolt me-2"></i>Acciones Rápidas
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('new_category') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Nueva Categoría
+                    </a>
+                    <a href="{{ url_for('list_products') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-box me-2"></i>Ver Productos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-palette me-2"></i>Colores Sugeridos
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="color-suggestion" data-color="#e74c3c">
+                            <div class="color-sample-small" style="background-color: #e74c3c;"></div>
+                            <small>Rojo</small>
+                        </div>
+                        <div class="color-suggestion" data-color="#3498db">
+                            <div class="color-sample-small" style="background-color: #3498db;"></div>
+                            <small>Azul</small>
+                        </div>
+                        <div class="color-suggestion" data-color="#2ecc71">
+                            <div class="color-sample-small" style="background-color: #2ecc71;"></div>
+                            <small>Verde</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="color-suggestion" data-color="#f39c12">
+                            <div class="color-sample-small" style="background-color: #f39c12;"></div>
+                            <small>Naranja</small>
+                        </div>
+                        <div class="color-suggestion" data-color="#9b59b6">
+                            <div class="color-sample-small" style="background-color: #9b59b6;"></div>
+                            <small>Púrpura</small>
+                        </div>
+                        <div class="color-suggestion" data-color="#34495e">
+                            <div class="color-sample-small" style="background-color: #34495e;"></div>
+                            <small>Gris</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.color-suggestion {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+.color-suggestion:hover {
+    background-color: #f8f9fa;
+}
+
+.color-sample-small {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    margin-right: 8px;
+    border: 1px solid #dee2e6;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleCategory(categoryId, newStatus) {
+    const action = newStatus ? 'activar' : 'desactivar';
+    
+    if (confirm(`¿Estás seguro de que quieres ${action} esta categoría?`)) {
+        // Obtener datos actuales de la categoría
+        const row = event.target.closest('tr');
+        const nameCell = row.cells[0].querySelector('strong').textContent;
+        const colorCode = row.cells[1].querySelector('code').textContent;
+        
+        // Crear formulario para actualizar
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/categories/${categoryId}/update`;
+        
+        const fields = [
+            { name: 'name', value: nameCell },
+            { name: 'color', value: colorCode },
+            { name: 'active', value: newStatus ? '1' : '' }
+        ];
+        
+        fields.forEach(field => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = field.name;
+            input.value = field.value;
+            form.appendChild(input);
+        });
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function deleteCategory(categoryId, categoryName) {
+    if (confirm(`¿Estás seguro de que quieres eliminar la categoría "${categoryName}"?\n\nEsta acción no se puede deshacer.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/categories/${categoryId}/delete`;
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    // Ctrl+N para nueva categoría
+    if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        window.location.href = '{{ url_for("new_category") }}';
+    }
+});
+
+// Sugerencias de colores
+document.querySelectorAll('.color-suggestion').forEach(suggestion => {
+    suggestion.addEventListener('click', function() {
+        const color = this.dataset.color;
+        // Copiar al clipboard
+        navigator.clipboard.writeText(color).then(() => {
+            // Feedback visual
+            this.style.backgroundColor = '#d4edda';
+            setTimeout(() => {
+                this.style.backgroundColor = '';
+            }, 1000);
+            
+            // Mostrar mensaje
+            const toast = document.createElement('div');
+            toast.className = 'alert alert-success position-fixed';
+            toast.style.top = '20px';
+            toast.style.right = '20px';
+            toast.style.zIndex = '9999';
+            toast.innerHTML = `<i class="fas fa-check me-2"></i>Color ${color} copiado al portapapeles`;
+            
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 3000);
+        });
+    });
+});
+</script>
+{% endblock %}

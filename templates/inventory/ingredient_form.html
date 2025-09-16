@@ -1,0 +1,488 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if ingredient %}Editar Ingrediente{% else %}Nuevo Ingrediente{% endif %} - Epicuro
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-{% if ingredient %}edit{% else %}plus-circle{% endif %} me-3"></i>
+                    {% if ingredient %}Editar Ingrediente{% else %}Nuevo Ingrediente{% endif %}
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">
+                    {% if ingredient %}Modifica los datos del ingrediente{% else %}Agrega un nuevo ingrediente al inventario{% endif %}
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('list_ingredients') }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left me-2"></i>Volver a Ingredientes
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Información del Ingrediente
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{% if ingredient %}{{ url_for('update_ingredient', ingredient_id=ingredient.id) }}{% else %}{{ url_for('create_ingredient') }}{% endif %}">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">
+                                    <i class="fas fa-leaf me-1"></i>Nombre del Ingrediente *
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="name" 
+                                       name="name" 
+                                       value="{{ ingredient.name if ingredient else '' }}"
+                                       placeholder="Ej: Palta, Tomate, Pollo"
+                                       required 
+                                       autocomplete="off">
+                                <div class="form-text">Nombre descriptivo del ingrediente</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="unit" class="form-label">
+                                    <i class="fas fa-balance-scale me-1"></i>Unidad *
+                                </label>
+                                <select class="form-select" id="unit" name="unit" required>
+                                    <option value="">Selecciona unidad</option>
+                                    <option value="kg" {% if ingredient and ingredient.unit == 'kg' %}selected{% endif %}>Kilogramos (kg)</option>
+                                    <option value="gr" {% if ingredient and ingredient.unit == 'gr' %}selected{% endif %}>Gramos (gr)</option>
+                                    <option value="litro" {% if ingredient and ingredient.unit == 'litro' %}selected{% endif %}>Litros</option>
+                                    <option value="ml" {% if ingredient and ingredient.unit == 'ml' %}selected{% endif %}>Mililitros (ml)</option>
+                                    <option value="unidad" {% if ingredient and ingredient.unit == 'unidad' %}selected{% endif %}>Unidades</option>
+                                </select>
+                                <div class="form-text">Unidad de medida</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">
+                            <i class="fas fa-align-left me-1"></i>Descripción
+                        </label>
+                        <textarea class="form-control" 
+                                  id="description" 
+                                  name="description" 
+                                  rows="2"
+                                  placeholder="Descripción detallada del ingrediente (opcional)">{{ ingredient.description if ingredient else '' }}</textarea>
+                        <div class="form-text">Características, calidad, marca, etc.</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="min_stock" class="form-label">
+                                    <i class="fas fa-exclamation-triangle me-1 text-warning"></i>Stock Mínimo *
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="min_stock" 
+                                           name="min_stock" 
+                                           value="{{ ingredient.min_stock if ingredient else '' }}"
+                                           placeholder="0"
+                                           min="0" 
+                                           step="0.001"
+                                           required>
+                                    <span class="input-group-text" id="min-unit">kg</span>
+                                </div>
+                                <div class="form-text">Alerta cuando el stock esté por debajo de este valor</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="max_stock" class="form-label">
+                                    <i class="fas fa-arrow-up me-1 text-success"></i>Stock Máximo
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="max_stock" 
+                                           name="max_stock" 
+                                           value="{{ ingredient.max_stock if ingredient else '' }}"
+                                           placeholder="0"
+                                           min="0" 
+                                           step="0.001">
+                                    <span class="input-group-text" id="max-unit">kg</span>
+                                </div>
+                                <div class="form-text">Capacidad máxima de almacenamiento</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="unit_cost" class="form-label">
+                                    <i class="fas fa-dollar-sign me-1"></i>Costo Unitario
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="unit_cost" 
+                                           name="unit_cost" 
+                                           value="{{ ingredient.unit_cost if ingredient else '' }}"
+                                           placeholder="0"
+                                           min="0" 
+                                           step="1">
+                                    <span class="input-group-text" id="cost-unit">/ kg</span>
+                                </div>
+                                <div class="form-text">Costo por unidad de medida</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="supplier_id" class="form-label">
+                                    <i class="fas fa-truck me-1"></i>Proveedor Preferido
+                                </label>
+                                <select class="form-select" id="supplier_id" name="supplier_id">
+                                    <option value="">Sin proveedor preferido</option>
+                                    {% for supplier in suppliers %}
+                                    <option value="{{ supplier.id }}" 
+                                            {% if ingredient and ingredient.preferred_supplier_id == supplier.id %}selected{% endif %}>
+                                        {{ supplier.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    Proveedor principal para este ingrediente
+                                    <a href="{{ url_for('new_supplier') }}" class="ms-2" target="_blank">
+                                        <i class="fas fa-plus"></i> Nuevo proveedor
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-toggle-on me-1"></i>Estado
+                                </label>
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="active" 
+                                           name="active"
+                                           {% if not ingredient or ingredient.active %}checked{% endif %}>
+                                    <label class="form-check-label" for="active">
+                                        Ingrediente activo
+                                    </label>
+                                </div>
+                                <div class="form-text">Los ingredientes inactivos no aparecerán en recetas</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if ingredient %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-boxes me-1"></i>Stock Actual
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" 
+                                           class="form-control" 
+                                           value="{{ ingredient.current_stock }} {{ ingredient.unit }}"
+                                           readonly>
+                                    <button type="button" 
+                                            class="btn btn-outline-primary"
+                                            onclick="showQuickAdjust()">
+                                        <i class="fas fa-edit"></i> Ajustar
+                                    </button>
+                                </div>
+                                <div class="form-text">Para cambiar el stock, usa el botón "Ajustar"</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-chart-line me-1"></i>Valor en Stock
+                                </label>
+                                <div class="form-control-plaintext">
+                                    <strong class="text-success">
+                                        ${{ "{:,.0f}".format((ingredient.current_stock or 0) * (ingredient.unit_cost or 0)) }}
+                                    </strong>
+                                </div>
+                                <div class="form-text">Valor total del stock actual</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Preview del ingrediente -->
+                    <div class="card bg-light mt-4">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-eye me-2"></i>Vista Previa
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <h6 class="mb-1" id="preview-name">Nombre del ingrediente</h6>
+                                    <p class="mb-1 text-muted" id="preview-description">Descripción</p>
+                                    <small class="text-muted">
+                                        <i class="fas fa-balance-scale me-1"></i>
+                                        Unidad: <span id="preview-unit">kg</span> |
+                                        <i class="fas fa-exclamation-triangle me-1 text-warning"></i>
+                                        Min: <span id="preview-min">0</span> |
+                                        <i class="fas fa-arrow-up me-1 text-success"></i>
+                                        Max: <span id="preview-max">0</span>
+                                    </small>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <div class="mb-2">
+                                        <span class="badge bg-primary fs-6" id="preview-cost">$0 / kg</span>
+                                    </div>
+                                    <div>
+                                        <small class="text-muted" id="preview-supplier">Sin proveedor</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botones de acción -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <div>
+                            <a href="{{ url_for('list_ingredients') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                        </div>
+                        <div>
+                            {% if ingredient %}
+                                <button type="button" class="btn btn-outline-danger me-2" onclick="deleteIngredient()">
+                                    <i class="fas fa-trash me-2"></i>Eliminar
+                                </button>
+                            {% endif %}
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-{% if ingredient %}save{% else %}plus{% endif %} me-2"></i>
+                                {% if ingredient %}Actualizar Ingrediente{% else %}Crear Ingrediente{% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Información adicional -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>Consejos para Ingredientes
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-check-circle text-success me-2"></i>Buenas prácticas</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Define stocks mínimos realistas</li>
+                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Actualiza costos regularmente</li>
+                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Asigna proveedores preferidos</li>
+                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Usa unidades de medida consistentes</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-info-circle text-info me-2"></i>Unidades comunes</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-caret-right me-2 text-info"></i><strong>kg:</strong> Carnes, verduras</li>
+                            <li><i class="fas fa-caret-right me-2 text-info"></i><strong>litro:</strong> Aceites, leche</li>
+                            <li><i class="fas fa-caret-right me-2 text-info"></i><strong>unidad:</strong> Panes, huevos</li>
+                            <li><i class="fas fa-caret-right me-2 text-info"></i><strong>gr:</strong> Especias, condimentos</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ajuste rápido -->
+{% if ingredient %}
+<div class="modal fade" id="quickAdjustModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajuste Rápido de Stock</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('adjust_ingredient_stock') }}">
+                <div class="modal-body">
+                    <input type="hidden" name="ingredient_id" value="{{ ingredient.id }}">
+                    
+                    <div class="mb-3">
+                        <label>Stock actual: <strong>{{ ingredient.current_stock }} {{ ingredient.unit }}</strong></label>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="quick-adjustment" class="form-label">Ajuste</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="quick-adjustment" name="adjustment" step="0.001" required>
+                            <span class="input-group-text">{{ ingredient.unit }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="quick-notes" class="form-label">Notas</label>
+                        <input type="text" class="form-control" id="quick-notes" name="notes" placeholder="Motivo del ajuste">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Referencias a elementos
+const nameInput = document.getElementById('name');
+const unitSelect = document.getElementById('unit');
+const descriptionInput = document.getElementById('description');
+const minStockInput = document.getElementById('min_stock');
+const maxStockInput = document.getElementById('max_stock');
+const unitCostInput = document.getElementById('unit_cost');
+const supplierSelect = document.getElementById('supplier_id');
+const activeCheck = document.getElementById('active');
+
+// Preview elements
+const previewName = document.getElementById('preview-name');
+const previewDescription = document.getElementById('preview-description');
+const previewUnit = document.getElementById('preview-unit');
+const previewMin = document.getElementById('preview-min');
+const previewMax = document.getElementById('preview-max');
+const previewCost = document.getElementById('preview-cost');
+const previewSupplier = document.getElementById('preview-supplier');
+
+// Actualizar unidades en inputs
+function updateUnits() {
+    const selectedUnit = unitSelect.value || 'kg';
+    document.getElementById('min-unit').textContent = selectedUnit;
+    document.getElementById('max-unit').textContent = selectedUnit;
+    document.getElementById('cost-unit').textContent = `/ ${selectedUnit}`;
+    updatePreview();
+}
+
+// Función para actualizar preview
+function updatePreview() {
+    const name = nameInput.value || 'Nombre del ingrediente';
+    const description = descriptionInput.value || 'Descripción del ingrediente';
+    const unit = unitSelect.value || 'kg';
+    const minStock = minStockInput.value || '0';
+    const maxStock = maxStockInput.value || '0';
+    const unitCost = unitCostInput.value || '0';
+    const supplierOption = supplierSelect.options[supplierSelect.selectedIndex];
+    const supplierName = supplierOption.value ? supplierOption.text : 'Sin proveedor';
+    
+    previewName.textContent = name;
+    previewDescription.textContent = description;
+    previewUnit.textContent = unit;
+    previewMin.textContent = minStock;
+    previewMax.textContent = maxStock;
+    previewCost.textContent = `$${parseInt(unitCost).toLocaleString()} / ${unit}`;
+    previewSupplier.textContent = supplierName;
+}
+
+// Event listeners
+unitSelect.addEventListener('change', updateUnits);
+nameInput.addEventListener('input', updatePreview);
+descriptionInput.addEventListener('input', updatePreview);
+minStockInput.addEventListener('input', updatePreview);
+maxStockInput.addEventListener('input', updatePreview);
+unitCostInput.addEventListener('input', updatePreview);
+supplierSelect.addEventListener('change', updatePreview);
+
+// Inicializar
+updateUnits();
+updatePreview();
+
+// Validación del formulario
+document.querySelector('form').addEventListener('submit', function(e) {
+    const name = nameInput.value.trim();
+    const unit = unitSelect.value;
+    const minStock = parseFloat(minStockInput.value);
+    const maxStock = parseFloat(maxStockInput.value);
+    
+    if (!name) {
+        e.preventDefault();
+        alert('El nombre del ingrediente es obligatorio');
+        nameInput.focus();
+        return;
+    }
+    
+    if (!unit) {
+        e.preventDefault();
+        alert('Debes seleccionar una unidad de medida');
+        unitSelect.focus();
+        return;
+    }
+    
+    if (maxStock > 0 && minStock > maxStock) {
+        e.preventDefault();
+        alert('El stock mínimo no puede ser mayor al stock máximo');
+        minStockInput.focus();
+        return;
+    }
+});
+
+// Función para mostrar ajuste rápido
+{% if ingredient %}
+function showQuickAdjust() {
+    new bootstrap.Modal(document.getElementById('quickAdjustModal')).show();
+}
+{% endif %}
+
+// Función para eliminar ingrediente
+function deleteIngredient() {
+    if (confirm('¿Estás seguro de que quieres eliminar este ingrediente?\n\nEsta acción no se puede deshacer.')) {
+        // Implementar eliminación
+        alert('Función de eliminación pendiente de implementar');
+    }
+}
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        document.querySelector('form').submit();
+    }
+    
+    if (e.key === 'Escape') {
+        if (confirm('¿Cancelar? Los cambios no guardados se perderán.')) {
+            window.location.href = '{{ url_for("list_ingredients") }}';
+        }
+    }
+});
+
+// Auto-focus
+nameInput.focus();
+</script>
+{% endblock %}

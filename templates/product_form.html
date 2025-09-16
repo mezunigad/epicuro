@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if product %}Editar Producto{% else %}Nuevo Producto{% endif %} - Epicuro
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-{% if product %}edit{% else %}plus-circle{% endif %} me-3"></i>
+                    {% if product %}Editar Producto{% else %}Nuevo Producto{% endif %}
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">
+                    {% if product %}Modifica los datos del producto{% else %}Agrega un nuevo producto al inventario{% endif %}
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('list_products') }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left me-2"></i>Volver a Productos
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Información del Producto
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{% if product %}{{ url_for('update_product', product_id=product.id) }}{% else %}{{ url_for('create_product') }}{% endif %}">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">
+                                    <i class="fas fa-tag me-1"></i>Nombre del Producto *
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="name" 
+                                       name="name" 
+                                       value="{{ product.name if product else '' }}"
+                                       placeholder="Ej: Sándwich Italiano"
+                                       required 
+                                       autocomplete="off">
+                                <div class="form-text">Nombre descriptivo del producto</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="price" class="form-label">
+                                    <i class="fas fa-dollar-sign me-1"></i>Precio *
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="price" 
+                                           name="price" 
+                                           value="{{ product.price if product else '' }}"
+                                           placeholder="0"
+                                           min="0" 
+                                           step="1"
+                                           required>
+                                </div>
+                                <div class="form-text">Precio en pesos chilenos</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">
+                            <i class="fas fa-align-left me-1"></i>Descripción
+                        </label>
+                        <textarea class="form-control" 
+                                  id="description" 
+                                  name="description" 
+                                  rows="3"
+                                  placeholder="Descripción detallada del producto (opcional)">{{ product.description if product else '' }}</textarea>
+                        <div class="form-text">Ingredientes, características especiales, etc.</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="category_id" class="form-label">
+                                    <i class="fas fa-folder me-1"></i>Categoría *
+                                </label>
+                                <select class="form-select" id="category_id" name="category_id" required>
+                                    <option value="">Selecciona una categoría</option>
+                                    {% for category in categories %}
+                                    <option value="{{ category.id }}" 
+                                            {% if product and product.category_id == category.id %}selected{% endif %}>
+                                        {{ category.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    Categoría para organizar el producto
+                                    <a href="{{ url_for('new_category') }}" class="ms-2" target="_blank">
+                                        <i class="fas fa-plus"></i> Nueva categoría
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-toggle-on me-1"></i>Estado
+                                </label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="available" 
+                                           name="available"
+                                           {% if not product or product.available %}checked{% endif %}>
+                                    <label class="form-check-label" for="available">
+                                        Producto disponible para venta
+                                    </label>
+                                </div>
+                                <div class="form-text">Los productos no disponibles no aparecerán en el menú</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview del producto -->
+                    <div class="card bg-light mt-4">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-eye me-2"></i>Vista Previa
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <h6 class="mb-1" id="preview-name">Nombre del producto</h6>
+                                    <p class="mb-0 text-muted" id="preview-description">Descripción del producto</p>
+                                    <small class="text-muted" id="preview-category">Categoría</small>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <span class="badge bg-success fs-6" id="preview-price">$0</span>
+                                    <br>
+                                    <small class="text-muted" id="preview-status">Estado</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botones de acción -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <div>
+                            <a href="{{ url_for('list_products') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                        </div>
+                        <div>
+                            {% if product %}
+                                <button type="button" class="btn btn-outline-danger me-2" onclick="deleteProduct()">
+                                    <i class="fas fa-trash me-2"></i>Eliminar
+                                </button>
+                            {% endif %}
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-{% if product %}save{% else %}plus{% endif %} me-2"></i>
+                                {% if product %}Actualizar Producto{% else %}Crear Producto{% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Información adicional -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>Consejos
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-check-circle text-success me-2"></i>Buenas prácticas</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Usa nombres descriptivos y claros</li>
+                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Incluye ingredientes principales en la descripción</li>
+                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Revisa los precios regularmente</li>
+                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Organiza productos por categorías</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-keyboard text-info me-2"></i>Atajos de teclado</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-caret-right me-2 text-info"></i><code>Ctrl + S</code> - Guardar producto</li>
+                            <li><i class="fas fa-caret-right me-2 text-info"></i><code>Esc</code> - Cancelar</li>
+                            <li><i class="fas fa-caret-right me-2 text-info"></i><code>Tab</code> - Navegar entre campos</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Referencias a elementos
+const nameInput = document.getElementById('name');
+const priceInput = document.getElementById('price');
+const descriptionInput = document.getElementById('description');
+const categorySelect = document.getElementById('category_id');
+const availableCheck = document.getElementById('available');
+
+const previewName = document.getElementById('preview-name');
+const previewPrice = document.getElementById('preview-price');
+const previewDescription = document.getElementById('preview-description');
+const previewCategory = document.getElementById('preview-category');
+const previewStatus = document.getElementById('preview-status');
+
+// Función para actualizar preview
+function updatePreview() {
+    // Nombre
+    previewName.textContent = nameInput.value || 'Nombre del producto';
+    
+    // Precio
+    const price = parseFloat(priceInput.value) || 0;
+    previewPrice.textContent = `${price.toLocaleString()}`;
+    
+    // Descripción
+    previewDescription.textContent = descriptionInput.value || 'Descripción del producto';
+    
+    // Categoría
+    const selectedCategory = categorySelect.options[categorySelect.selectedIndex];
+    previewCategory.textContent = selectedCategory.value ? selectedCategory.text : 'Sin categoría';
+    
+    // Estado
+    previewStatus.textContent = availableCheck.checked ? 'Disponible' : 'No disponible';
+    previewStatus.className = availableCheck.checked ? 'text-success' : 'text-danger';
+}
+
+// Event listeners para actualizar preview en tiempo real
+nameInput.addEventListener('input', updatePreview);
+priceInput.addEventListener('input', updatePreview);
+descriptionInput.addEventListener('input', updatePreview);
+categorySelect.addEventListener('change', updatePreview);
+availableCheck.addEventListener('change', updatePreview);
+
+// Inicializar preview
+updatePreview();
+
+// Validación del formulario
+document.querySelector('form').addEventListener('submit', function(e) {
+    const name = nameInput.value.trim();
+    const price = parseFloat(priceInput.value);
+    const categoryId = categorySelect.value;
+    
+    if (!name) {
+        e.preventDefault();
+        alert('El nombre del producto es obligatorio');
+        nameInput.focus();
+        return;
+    }
+    
+    if (!price || price <= 0) {
+        e.preventDefault();
+        alert('El precio debe ser mayor a 0');
+        priceInput.focus();
+        return;
+    }
+    
+    if (!categoryId) {
+        e.preventDefault();
+        alert('Debes seleccionar una categoría');
+        categorySelect.focus();
+        return;
+    }
+    
+    // Confirmación antes de guardar
+    const action = '{{ "actualizar" if product else "crear" }}';
+    if (!confirm(`¿Estás seguro de que quieres ${action} este producto?`)) {
+        e.preventDefault();
+    }
+});
+
+// Función para eliminar producto
+function deleteProduct() {
+    if (confirm('¿Estás seguro de que quieres eliminar este producto?\n\nEsta acción no se puede deshacer.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/products/{{ product.id if product else 0 }}/delete';
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    // Ctrl+S para guardar
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        document.querySelector('form').submit();
+    }
+    
+    // ESC para cancelar
+    if (e.key === 'Escape') {
+        if (confirm('¿Estás seguro de que quieres cancelar? Los cambios no guardados se perderán.')) {
+            window.location.href = '{{ url_for("list_products") }}';
+        }
+    }
+});
+
+// Auto-formatear precio
+priceInput.addEventListener('blur', function() {
+    const value = parseFloat(this.value);
+    if (!isNaN(value)) {
+        this.value = Math.round(value);
+    }
+});
+
+// Focus automático en el primer campo
+nameInput.focus();
+
+// Agregar indicador de campos requeridos
+document.querySelectorAll('input[required], select[required]').forEach(field => {
+    const label = document.querySelector(`label[for="${field.id}"]`);
+    if (label && !label.textContent.includes('*')) {
+        label.innerHTML = label.innerHTML;
+    }
+});
+
+// Prevenir envío accidental del formulario
+let formChanged = false;
+document.querySelectorAll('input, select, textarea').forEach(field => {
+    field.addEventListener('change', () => formChanged = true);
+    field.addEventListener('input', () => formChanged = true);
+});
+
+window.addEventListener('beforeunload', function(e) {
+    if (formChanged) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+// Marcar formulario como enviado para evitar warning al guardar
+document.querySelector('form').addEventListener('submit', () => formChanged = false);
+</script>
+{% endblock %}

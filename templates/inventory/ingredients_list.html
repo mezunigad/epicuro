@@ -1,0 +1,468 @@
+{% extends "base.html" %}
+
+{% block title %}Ingredientes - Epicuro{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-leaf me-3"></i>
+                    Gestión de Ingredientes
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">Control de stock y gestión de ingredientes</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('new_ingredient') }}" class="btn btn-light btn-lg">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    Nuevo Ingrediente
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alertas de stock bajo -->
+{% if low_stock %}
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    <strong>¡Atención!</strong> Hay {{ low_stock|length }} ingrediente(s) con stock bajo.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">
+                    <i class="fas fa-search me-1"></i>Buscar
+                </label>
+                <input type="text" class="form-control" id="search-ingredients" placeholder="Buscar ingredientes...">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">
+                    <i class="fas fa-filter me-1"></i>Estado
+                </label>
+                <select class="form-select" id="filter-status">
+                    <option value="">Todos</option>
+                    <option value="low-stock">Stock bajo</option>
+                    <option value="available">Disponible</option>
+                    <option value="zero-stock">Sin stock</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">
+                    <i class="fas fa-balance-scale me-1"></i>Unidad
+                </label>
+                <select class="form-select" id="filter-unit">
+                    <option value="">Todas</option>
+                    <option value="kg">Kilogramos</option>
+                    <option value="gr">Gramos</option>
+                    <option value="litro">Litros</option>
+                    <option value="unidad">Unidades</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="button" class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                    <i class="fas fa-times me-1"></i>Limpiar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de ingredientes -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list me-2"></i>
+            Lista de Ingredientes
+        </h5>
+        <span class="badge bg-primary" id="ingredients-count">{{ ingredients|length }} ingredientes</span>
+    </div>
+    <div class="card-body p-0">
+        {% if ingredients %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="ingredients-table">
+                    <thead>
+                        <tr>
+                            <th>Ingrediente</th>
+                            <th>Stock Actual</th>
+                            <th>Stock Mínimo</th>
+                            <th>Costo Unitario</th>
+                            <th>Proveedor</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ingredient in ingredients %}
+                        <tr class="ingredient-row" 
+                            data-name="{{ ingredient.name.lower() }}"
+                            data-unit="{{ ingredient.unit }}"
+                            data-stock-status="{% if ingredient.current_stock <= ingredient.min_stock %}low-stock{% elif ingredient.current_stock == 0 %}zero-stock{% else %}available{% endif %}">
+                            <td>
+                                <div>
+                                    <strong>{{ ingredient.name }}</strong>
+                                    {% if ingredient.description %}
+                                        <br><small class="text-muted">{{ ingredient.description }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="stock-level {% if ingredient.current_stock <= ingredient.min_stock %}text-danger{% elif ingredient.current_stock == 0 %}text-dark{% else %}text-success{% endif %}">
+                                    <strong>{{ ingredient.current_stock }} {{ ingredient.unit }}</strong>
+                                </span>
+                                <!-- Barra de progreso visual -->
+                                {% if ingredient.max_stock > 0 %}
+                                <div class="progress mt-1" style="height: 4px;">
+                                    <div class="progress-bar {% if ingredient.current_stock <= ingredient.min_stock %}bg-danger{% else %}bg-success{% endif %}" 
+                                         style="width: {{ (ingredient.current_stock / ingredient.max_stock * 100)|round }}%"></div>
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="text-muted">{{ ingredient.min_stock }} {{ ingredient.unit }}</span>
+                            </td>
+                            <td>
+                                <strong>${{ "{:,.0f}".format(ingredient.unit_cost) }}</strong>
+                                <small class="text-muted">/ {{ ingredient.unit }}</small>
+                            </td>
+                            <td>
+                                {% if ingredient.supplier_name %}
+                                    <span class="badge bg-info">{{ ingredient.supplier_name }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Sin proveedor</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not ingredient.active %}
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-times me-1"></i>Inactivo
+                                    </span>
+                                {% elif ingredient.current_stock <= ingredient.min_stock %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>Stock Bajo
+                                    </span>
+                                {% elif ingredient.current_stock == 0 %}
+                                    <span class="badge bg-dark">
+                                        <i class="fas fa-ban me-1"></i>Sin Stock
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>Disponible
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick="showAdjustModal({{ ingredient.id }}, '{{ ingredient.name }}', {{ ingredient.current_stock }})"
+                                            title="Ajustar stock">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info" 
+                                            onclick="showMovements({{ ingredient.id }})"
+                                            title="Ver movimientos">
+                                        <i class="fas fa-history"></i>
+                                    </button>
+                                    <a href="{{ url_for('edit_ingredient', ingredient_id=ingredient.id) }}" 
+                                       class="btn btn-sm btn-outline-secondary" 
+                                       title="Editar">
+                                        <i class="fas fa-cog"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-leaf fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">No hay ingredientes registrados</h4>
+                <p class="text-muted">Comienza agregando ingredientes a tu inventario</p>
+                <a href="{{ url_for('new_ingredient') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Agregar Primer Ingrediente
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal para ajustar stock -->
+<div class="modal fade" id="adjustStockModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>Ajustar Stock
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('adjust_ingredient_stock') }}">
+                <div class="modal-body">
+                    <input type="hidden" name="ingredient_id" id="adjust-ingredient-id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Ingrediente:</label>
+                        <strong id="adjust-ingredient-name"></strong>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Stock actual:</label>
+                        <span id="adjust-current-stock" class="fw-bold"></span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="adjustment" class="form-label">
+                            <i class="fas fa-plus-minus me-1"></i>Ajuste
+                        </label>
+                        <div class="input-group">
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="adjustment" 
+                                   name="adjustment" 
+                                   step="0.001"
+                                   placeholder="Ej: +5.5 o -2.3"
+                                   required>
+                            <span class="input-group-text" id="adjust-unit"></span>
+                        </div>
+                        <div class="form-text">Usa números positivos para agregar, negativos para quitar</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">
+                            <i class="fas fa-sticky-note me-1"></i>Notas
+                        </label>
+                        <textarea class="form-control" 
+                                  id="notes" 
+                                  name="notes" 
+                                  rows="2"
+                                  placeholder="Motivo del ajuste..."></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Nuevo stock será:</strong> <span id="preview-new-stock">0</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Confirmar Ajuste
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver movimientos -->
+<div class="modal fade" id="movementsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-history me-2"></i>Historial de Movimientos
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="movements-loading" class="text-center py-4">
+                    <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                    <p class="mt-2">Cargando movimientos...</p>
+                </div>
+                <div id="movements-content"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentStock = 0;
+
+// Función para mostrar modal de ajuste
+function showAdjustModal(ingredientId, name, stock) {
+    currentStock = stock;
+    document.getElementById('adjust-ingredient-id').value = ingredientId;
+    document.getElementById('adjust-ingredient-name').textContent = name;
+    document.getElementById('adjust-current-stock').textContent = stock;
+    document.getElementById('adjustment').value = '';
+    document.getElementById('notes').value = '';
+    updatePreview();
+    
+    new bootstrap.Modal(document.getElementById('adjustStockModal')).show();
+}
+
+// Actualizar preview del nuevo stock
+function updatePreview() {
+    const adjustment = parseFloat(document.getElementById('adjustment').value) || 0;
+    const newStock = currentStock + adjustment;
+    document.getElementById('preview-new-stock').textContent = newStock.toFixed(3);
+    
+    // Cambiar color según el resultado
+    const previewElement = document.getElementById('preview-new-stock');
+    if (newStock < 0) {
+        previewElement.className = 'text-danger fw-bold';
+    } else if (newStock === 0) {
+        previewElement.className = 'text-warning fw-bold';
+    } else {
+        previewElement.className = 'text-success fw-bold';
+    }
+}
+
+// Event listener para el ajuste
+document.getElementById('adjustment').addEventListener('input', updatePreview);
+
+// Función para mostrar movimientos
+function showMovements(ingredientId) {
+    const modal = new bootstrap.Modal(document.getElementById('movementsModal'));
+    modal.show();
+    
+    // Mostrar loading
+    document.getElementById('movements-loading').style.display = 'block';
+    document.getElementById('movements-content').innerHTML = '';
+    
+    // Cargar movimientos via API
+    fetch(`/api/inventory/movements/${ingredientId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('movements-loading').style.display = 'none';
+            
+            if (data.length === 0) {
+                document.getElementById('movements-content').innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Sin movimientos</h5>
+                        <p class="text-muted">No hay movimientos registrados para este ingrediente</p>
+                    </div>
+                `;
+            } else {
+                let movementsHtml = `
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Cantidad</th>
+                                    <th>Notas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                data.forEach(movement => {
+                    const date = new Date(movement.created_at).toLocaleString('es-CL');
+                    const typeMap = {
+                        'purchase': { label: 'Compra', class: 'success', icon: 'plus' },
+                        'consumption': { label: 'Consumo', class: 'primary', icon: 'minus' },
+                        'adjustment': { label: 'Ajuste', class: 'warning', icon: 'edit' },
+                        'waste': { label: 'Desperdicio', class: 'danger', icon: 'trash' }
+                    };
+                    
+                    const type = typeMap[movement.movement_type] || { label: movement.movement_type, class: 'secondary', icon: 'circle' };
+                    
+                    movementsHtml += `
+                        <tr>
+                            <td><small>${date}</small></td>
+                            <td>
+                                <span class="badge bg-${type.class}">
+                                    <i class="fas fa-${type.icon} me-1"></i>${type.label}
+                                </span>
+                            </td>
+                            <td class="${movement.quantity > 0 ? 'text-success' : 'text-danger'}">
+                                ${movement.quantity > 0 ? '+' : ''}${movement.quantity}
+                            </td>
+                            <td><small class="text-muted">${movement.notes || ''}</small></td>
+                        </tr>
+                    `;
+                });
+                
+                movementsHtml += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                document.getElementById('movements-content').innerHTML = movementsHtml;
+            }
+        })
+        .catch(error => {
+            document.getElementById('movements-loading').style.display = 'none';
+            document.getElementById('movements-content').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error al cargar movimientos: ${error.message}
+                </div>
+            `;
+        });
+}
+
+// Filtros y búsqueda
+document.getElementById('search-ingredients').addEventListener('input', filterIngredients);
+document.getElementById('filter-status').addEventListener('change', filterIngredients);
+document.getElementById('filter-unit').addEventListener('change', filterIngredients);
+
+function filterIngredients() {
+    const searchTerm = document.getElementById('search-ingredients').value.toLowerCase();
+    const statusFilter = document.getElementById('filter-status').value;
+    const unitFilter = document.getElementById('filter-unit').value;
+    
+    const rows = document.querySelectorAll('.ingredient-row');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        const name = row.dataset.name;
+        const status = row.dataset.stockStatus;
+        const unit = row.dataset.unit;
+        
+        const matchesSearch = name.includes(searchTerm);
+        const matchesStatus = !statusFilter || status === statusFilter;
+        const matchesUnit = !unitFilter || unit === unitFilter;
+        
+        if (matchesSearch && matchesStatus && matchesUnit) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Actualizar contador
+    document.getElementById('ingredients-count').textContent = `${visibleCount} ingredientes`;
+}
+
+function clearFilters() {
+    document.getElementById('search-ingredients').value = '';
+    document.getElementById('filter-status').value = '';
+    document.getElementById('filter-unit').value = '';
+    filterIngredients();
+}
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    // Ctrl+F para buscar
+    if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        document.getElementById('search-ingredients').focus();
+    }
+    
+    // Ctrl+N para nuevo ingrediente
+    if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        window.location.href = '{{ url_for("new_ingredient") }}';
+    }
+});
+
+// Focus en búsqueda al cargar
+document.getElementById('search-ingredients').focus();
+</script>
+{% endblock %}

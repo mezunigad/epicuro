@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+
+{% block title %}Reportes - Epicuro{% endblock %}
+
+{% block extra_css %}
+<style>
+.metric-card {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-radius: 15px;
+    padding: 20px;
+    height: 100%;
+    transition: transform 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.metric-label {
+    opacity: 0.9;
+    font-size: 0.9rem;
+}
+
+.metric-change {
+    font-size: 0.8rem;
+    margin-top: 10px;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin: 20px 0;
+}
+
+.top-product-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.top-product-item:last-child {
+    border-bottom: none;
+}
+
+.product-rank {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.product-rank.gold { background: #f39c12; }
+.product-rank.silver { background: #95a5a6; }
+.product-rank.bronze { background: #e67e22; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-chart-bar me-3"></i>
+                    Reportes y Analytics
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">Análisis de ventas y rendimiento del negocio</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <button onclick="exportReport()" class="btn btn-light btn-lg">
+                    <i class="fas fa-download me-2"></i>
+                    Exportar Reporte
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Métricas principales -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="metric-card" style="background: linear-gradient(135deg, #2ecc71, #27ae60);">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="metric-value">${{ "{:,.0f}".format(stats.today_sales) }}</div>
+                    <div class="metric-label">Ventas Hoy</div>
+                    <div class="metric-change">
+                        <i class="fas fa-arrow-up me-1"></i>+15% vs ayer
+                    </div>
+                </div>
+                <div class="metric-icon">
+                    <i class="fas fa-dollar-sign fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="metric-card" style="background: linear-gradient(135deg, #3498db, #2980b9);">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="metric-value">${{ "{:,.0f}".format(stats.week_sales) }}</div>
+                    <div class="metric-label">Ventas Esta Semana</div>
+                    <div class="metric-change">
+                        <i class="fas fa-arrow-up me-1"></i>+8% vs semana anterior
+                    </div>
+                </div>
+                <div class="metric-icon">
+                    <i class="fas fa-calendar-week fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="metric-card" style="background: linear-gradient(135deg, #f39c12, #e67e22);">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="metric-value">${{ "{:,.0f}".format(stats.month_sales) }}</div>
+                    <div class="metric-label">Ventas Este Mes</div>
+                    <div class="metric-change">
+                        <i class="fas fa-arrow-up me-1"></i>+12% vs mes anterior
+                    </div>
+                </div>
+                <div class="metric-icon">
+                    <i class="fas fa-calendar-alt fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="metric-card" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="metric-value">{{ stats.total_orders }}</div>
+                    <div class="metric-label">Total Órdenes</div>
+                    <div class="metric-change">
+                        <i class="fas fa-chart-line me-1"></i>Histórico
+                    </div>
+                </div>
+                <div class="metric-icon">
+                    <i class="fas fa-shopping-cart fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos y análisis -->
+<div class="row">
+    <!-- Gráfico de ventas -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-line me-2"></i>
+                    Tendencia de Ventas
+                </h5>
+                <div class="btn-group" role="group">
+                    <input type="radio" class="btn-check" name="period" id="period7" checked>
+                    <label class="btn btn-outline-primary btn-sm" for="period7">7 días</label>
+                    
+                    <input type="radio" class="btn-check" name="period" id="period30">
+                    <label class="btn btn-outline-primary btn-sm" for="period30">30 días</label>
+                    
+                    <input type="radio" class="btn-check" name="period" id="period90">
+                    <label class="btn btn-outline-primary btn-sm" for="period90">3 meses</label>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Top productos -->
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-trophy me-2"></i>
+                    Top Productos (7 días)
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if top_products %}
+                    {% for product in top_products[:10] %}
+                    <div class="top-product-item">
+                        <div class="d-flex align-items-center">
+                            <div class="product-rank {% if loop.index == 1 %}gold{% elif loop.index == 2 %}silver{% elif loop.index == 3 %}bronze{% endif %}">
+                                {{ loop.index }}
+                            </div>
+                            <div class="ms-3">
+                                <div class="fw-bold">{{ product.product_name }}</div>
+                                <small class="text-muted">{{ product.total_quantity }} vendidos</small>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-success">${{ "{:,.0f}".format(product.total_revenue) }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No hay datos suficientes para mostrar productos más vendidos</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Análisis adicional -->
+<div class="row">
+    <!-- Distribución por categorías -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    Ventas por Categoría
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Horarios de mayor venta -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-clock me-2"></i>
+                    Horarios Pico
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="hoursChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Métricas detalladas -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-table me-2"></i>
+            Resumen Detallado
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3 text-center">
+                <h4 class="text-primary">${{ "{:,.0f}".format(stats.month_sales / 30 if stats.month_sales > 0 else 0) }}</h4>
+                <small class="text-muted">Promedio diario</small>
+            </div>
+            <div class="col-md-3 text-center">
+                <h4 class="text-success">{{ "{:,.0f}".format(stats.total_orders / 30 if stats.total_orders > 0 else 0) }}</h4>
+                <small class="text-muted">Órdenes promedio/día</small>
+            </div>
+            <div class="col-md-3 text-center">
+                <h4 class="text-warning">${{ "{:,.0f}".format(stats.month_sales / stats.total_orders if stats.total_orders > 0 else 0) }}</h4>
+                <small class="text-muted">Ticket promedio</small>
+            </div>
+            <div class="col-md-3 text-center">
+                <h4 class="text-info">{{ top_products|length if top_products else 0 }}</h4>
+                <small class="text-muted">Productos activos</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+<script>
+// Configuración de colores
+const colors = {
+    primary: '#e74c3c',
+    secondary: '#3498db',
+    success: '#2ecc71',
+    warning: '#f39c12',
+    info: '#17a2b8',
+    danger: '#dc3545'
+};
+
+// Datos simulados para gráficos (en un entorno real vendrían del backend)
+const salesData = {
+    labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+    datasets: [{
+        label: 'Ventas ($)',
+        data: [{{ stats.today_sales * 0.8 }}, {{ stats.today_sales * 1.2 }}, {{ stats.today_sales * 0.9 }}, {{ stats.today_sales * 1.1 }}, {{ stats.today_sales * 1.3 }}, {{ stats.today_sales * 1.5 }}, {{ stats.today_sales }}],
+        borderColor: colors.primary,
+        backgroundColor: colors.primary + '20',
+        tension: 0.4,
+        fill: true
+    }]
+};
+
+const categoryData = {
+    labels: ['Sándwiches', 'Bebidas', 'Acompañamientos', 'Postres', 'Desayunos'],
+    datasets: [{
+        data: [35, 25, 20, 12, 8],
+        backgroundColor: [
+            colors.primary,
+            colors.secondary,
+            colors.warning,
+            colors.success,
+            '#9b59b6'
+        ]
+    }]
+};
+
+const hoursData = {
+    labels: ['8:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00'],
+    datasets: [{
+        label: 'Órdenes',
+        data: [5, 8, 15, 20, 12, 18, 10],
+        backgroundColor: colors.secondary,
+        borderColor: colors.secondary,
+        borderWidth: 2
+    }]
+};
+
+// Crear gráficos
+const salesChart = new Chart(document.getElementById('salesChart'), {
+    type: 'line',
+    data: salesData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '$' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+
+const categoryChart = new Chart(document.getElementById('categoryChart'), {
+    type: 'doughnut',
+    data: categoryData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+const hoursChart = new Chart(document.getElementById('hoursChart'), {
+    type: 'bar',
+    data: hoursData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// Función para exportar reporte
+function exportReport() {
+    // Simulación de exportación
+    const reportData = {
+        date: new Date().toLocaleDateString(),
+        stats: {
+            today_sales: {{ stats.today_sales }},
+            week_sales: {{ stats.week_sales }},
+            month_sales: {{ stats.month_sales }},
+            total_orders: {{ stats.total_orders }}
+        },
+        top_products: {{ top_products|tojson if top_products else "[]" }}
+    };
+    
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportData, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `reporte_epicuro_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    
+    // Mostrar mensaje de éxito
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success position-fixed';
+    alert.style.top = '20px';
+    alert.style.right = '20px';
+    alert.style.zIndex = '9999';
+    alert.innerHTML = '<i class="fas fa-download me-2"></i>Reporte exportado exitosamente';
+    
+    document.body.appendChild(alert);
+    setTimeout(() => {
+        document.body.removeChild(alert);
+    }, 3000);
+}
+
+// Cambiar período de análisis
+document.querySelectorAll('input[name="period"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        // Aquí actualizarías los datos del gráfico según el período seleccionado
+        console.log('Período cambiado a:', this.id);
+    });
+});
+
+// Auto-refresh cada 5 minutos
+setInterval(function() {
+    location.reload();
+}, 300000);
+</script>
+{% endblock %}

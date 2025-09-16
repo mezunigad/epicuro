@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Comandas - Epicuro{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-list me-3"></i>
+                    Comandas
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">Gestión y seguimiento de órdenes</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('new_order') }}" class="btn btn-light btn-lg">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    Nueva Comanda
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">
+                    <i class="fas fa-filter me-1"></i>Estado
+                </label>
+                <select name="status" class="form-select">
+                    <option value="">Todos los estados</option>
+                    <option value="pending" {{ 'selected' if status_filter == 'pending' }}>Pendiente</option>
+                    <option value="preparing" {{ 'selected' if status_filter == 'preparing' }}>Preparando</option>
+                    <option value="ready" {{ 'selected' if status_filter == 'ready' }}>Listo</option>
+                    <option value="completed" {{ 'selected' if status_filter == 'completed' }}>Completado</option>
+                    <option value="cancelled" {{ 'selected' if status_filter == 'cancelled' }}>Cancelado</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">
+                    <i class="fas fa-calendar me-1"></i>Fecha
+                </label>
+                <input type="date" name="date" class="form-control" value="{{ date_filter }}">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="fas fa-search me-1"></i>Filtrar
+                </button>
+                <a href="{{ url_for('list_orders') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times me-1"></i>Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Órdenes -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-receipt me-2"></i>
+            Lista de Comandas
+        </h5>
+        <span class="badge bg-primary">{{ orders|length }} órdenes</span>
+    </div>
+    <div class="card-body p-0">
+        {% if orders %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th>Cliente</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                            <th>Pago</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td>
+                                <strong class="text-primary">{{ order.order_number }}</strong>
+                            </td>
+                            <td>
+                                {% if order.customer_name %}
+                                    <div>
+                                        <i class="fas fa-user me-1"></i>{{ order.customer_name }}
+                                    </div>
+                                    {% if order.customer_phone %}
+                                        <small class="text-muted">
+                                            <i class="fas fa-phone me-1"></i>{{ order.customer_phone }}
+                                        </small>
+                                    {% endif %}
+                                {% else %}
+                                    <em class="text-muted">Sin nombre</em>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>${{ "{:,.0f}".format(order.total_amount) }}</strong>
+                            </td>
+                            <td>
+                                <div class="dropdown">
+                                    {% if order.status == 'pending' %}
+                                        <button class="btn btn-warning btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            <i class="fas fa-clock me-1"></i>Pendiente
+                                        </button>
+                                    {% elif order.status == 'preparing' %}
+                                        <button class="btn btn-info btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            <i class="fas fa-utensils me-1"></i>Preparando
+                                        </button>
+                                    {% elif order.status == 'ready' %}
+                                        <button class="btn btn-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            <i class="fas fa-check me-1"></i>Listo
+                                        </button>
+                                    {% elif order.status == 'completed' %}
+                                        <button class="btn btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            <i class="fas fa-check-double me-1"></i>Completado
+                                        </button>
+                                    {% elif order.status == 'cancelled' %}
+                                        <button class="btn btn-danger btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            <i class="fas fa-times me-1"></i>Cancelado
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            {{ order.status }}
+                                        </button>
+                                    {% endif %}
+                                    
+                                    <ul class="dropdown-menu">
+                                        <li><button class="dropdown-item" onclick="updateStatus({{ order.id }}, 'pending')">
+                                            <i class="fas fa-clock me-2 text-warning"></i>Pendiente
+                                        </button></li>
+                                        <li><button class="dropdown-item" onclick="updateStatus({{ order.id }}, 'preparing')">
+                                            <i class="fas fa-utensils me-2 text-info"></i>Preparando
+                                        </button></li>
+                                        <li><button class="dropdown-item" onclick="updateStatus({{ order.id }}, 'ready')">
+                                            <i class="fas fa-check me-2 text-success"></i>Listo
+                                        </button></li>
+                                        <li><button class="dropdown-item" onclick="updateStatus({{ order.id }}, 'completed')">
+                                            <i class="fas fa-check-double me-2 text-primary"></i>Completado
+                                        </button></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><button class="dropdown-item" onclick="updateStatus({{ order.id }}, 'cancelled')">
+                                            <i class="fas fa-times me-2 text-danger"></i>Cancelar
+                                        </button></li>
+                                    </ul>
+                                </div>
+                            </td>
+                            <td>
+                                {% if order.payment_method == 'efectivo' %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-money-bill me-1"></i>Efectivo
+                                    </span>
+                                {% elif order.payment_method == 'tarjeta' %}
+                                    <span class="badge bg-primary">
+                                        <i class="fas fa-credit-card me-1"></i>Tarjeta
+                                    </span>
+                                {% elif order.payment_method == 'transferencia' %}
+                                    <span class="badge bg-info">
+                                        <i class="fas fa-exchange-alt me-1"></i>Transferencia
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ order.payment_method }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div>{{ order.created_at.strftime('%d/%m/%Y') if order.created_at else 'N/A' }}</div>
+                                <small class="text-muted">{{ order.created_at.strftime('%H:%M') if order.created_at else '' }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('view_order', order_id=order.id) }}" 
+                                       class="btn btn-sm btn-outline-primary" 
+                                       title="Ver detalles">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-secondary" 
+                                            onclick="printOrder({{ order.id }})"
+                                            title="Imprimir">
+                                        <i class="fas fa-print"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">No se encontraron comandas</h4>
+                {% if status_filter or date_filter %}
+                    <p class="text-muted">Intenta cambiar los filtros de búsqueda</p>
+                    <a href="{{ url_for('list_orders') }}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-times me-2"></i>Limpiar Filtros
+                    </a>
+                {% else %}
+                    <p class="text-muted">Las comandas aparecerán aquí cuando se creen</p>
+                {% endif %}
+                <a href="{{ url_for('new_order') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Crear Primera Comanda
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal para cambio de estado -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cambiar Estado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que quieres cambiar el estado de esta orden?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmStatusChange">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentOrderId = null;
+let currentStatus = null;
+
+function updateStatus(orderId, newStatus) {
+    currentOrderId = orderId;
+    currentStatus = newStatus;
+    
+    // Crear y enviar formulario directamente
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/orders/${orderId}/update_status`;
+    
+    const statusInput = document.createElement('input');
+    statusInput.type = 'hidden';
+    statusInput.name = 'status';
+    statusInput.value = newStatus;
+    
+    form.appendChild(statusInput);
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function printOrder(orderId) {
+    // Abrir la orden en una nueva ventana para imprimir
+    window.open(`/orders/${orderId}?print=1`, '_blank');
+}
+
+// Auto-refresh cada 30 segundos para comandas en tiempo real
+setInterval(function() {
+    // Solo auto-refresh si no hay filtros aplicados
+    const urlParams = new URLSearchParams(window.location.search);
+    if (!urlParams.has('status') && !urlParams.has('date')) {
+        location.reload();
+    }
+}, 30000);
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    // F5 para refrescar
+    if (e.key === 'F5') {
+        e.preventDefault();
+        location.reload();
+    }
+    
+    // Ctrl+N para nueva orden
+    if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        window.location.href = '{{ url_for("new_order") }}';
+    }
+});
+</script>
+{% endblock %}

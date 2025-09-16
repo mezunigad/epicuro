@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if category %}Editar Categoría{% else %}Nueva Categoría{% endif %} - Epicuro
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-{% if category %}edit{% else %}plus-circle{% endif %} me-3"></i>
+                    {% if category %}Editar Categoría{% else %}Nueva Categoría{% endif %}
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">
+                    {% if category %}Modifica los datos de la categoría{% else %}Crea una nueva categoría para organizar productos{% endif %}
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('list_categories') }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left me-2"></i>Volver a Categorías
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Información de la Categoría
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{% if category %}{{ url_for('update_category', category_id=category.id) }}{% else %}{{ url_for('create_category') }}{% endif %}">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">
+                                    <i class="fas fa-tag me-1"></i>Nombre de la Categoría *
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="name" 
+                                       name="name" 
+                                       value="{{ category.name if category else '' }}"
+                                       placeholder="Ej: Sándwiches, Bebidas, Postres"
+                                       required 
+                                       autocomplete="off">
+                                <div class="form-text">Nombre que aparecerá en el menú</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="color" class="form-label">
+                                    <i class="fas fa-palette me-1"></i>Color
+                                </label>
+                                <div class="input-group">
+                                    <input type="color" 
+                                           class="form-control form-control-color" 
+                                           id="color" 
+                                           name="color" 
+                                           value="{{ category.color if category else '#3498db' }}"
+                                           title="Selecciona un color">
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="color-text" 
+                                           placeholder="#3498db"
+                                           pattern="^#[0-9A-Fa-f]{6}$">
+                                </div>
+                                <div class="form-text">Color para identificar la categoría</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">
+                            <i class="fas fa-align-left me-1"></i>Descripción
+                        </label>
+                        <textarea class="form-control" 
+                                  id="description" 
+                                  name="description" 
+                                  rows="3"
+                                  placeholder="Descripción de la categoría (opcional)">{{ category.description if category else '' }}</textarea>
+                        <div class="form-text">Información adicional sobre esta categoría</div>
+                    </div>
+                    
+                    {% if category %}
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="active" 
+                                   name="active"
+                                   {% if category.active %}checked{% endif %}>
+                            <label class="form-check-label" for="active">
+                                <i class="fas fa-toggle-on me-1"></i>Categoría activa
+                            </label>
+                        </div>
+                        <div class="form-text">Las categorías inactivas no aparecerán en el menú</div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Preview de la categoría -->
+                    <div class="card bg-light mt-4">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-eye me-2"></i>Vista Previa
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="category-preview-color me-3" 
+                                     id="preview-color-sample"
+                                     style="width: 40px; height: 40px; border-radius: 10px; background-color: #3498db; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"></div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1" id="preview-name">Nombre de la categoría</h6>
+                                    <p class="mb-0 text-muted" id="preview-description">Descripción de la categoría</p>
+                                </div>
+                                <div>
+                                    <span class="badge" id="preview-badge" style="background-color: #3498db;">
+                                        <i class="fas fa-tag me-1"></i>Ejemplo
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Paleta de colores sugeridos -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-palette me-2"></i>Colores Sugeridos
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="color-palette">
+                                        <div class="color-option" data-color="#e74c3c" title="Rojo - Perfecto para carnes y platos principales"></div>
+                                        <div class="color-option" data-color="#3498db" title="Azul - Ideal para bebidas"></div>
+                                        <div class="color-option" data-color="#2ecc71" title="Verde - Excelente para ensaladas y opciones saludables"></div>
+                                        <div class="color-option" data-color="#f39c12" title="Naranja - Genial para acompañamientos"></div>
+                                        <div class="color-option" data-color="#9b59b6" title="Púrpura - Perfecto para postres"></div>
+                                        <div class="color-option" data-color="#34495e" title="Gris - Neutral para categorías generales"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="color-palette">
+                                        <div class="color-option" data-color="#e67e22" title="Naranja oscuro"></div>
+                                        <div class="color-option" data-color="#1abc9c" title="Verde agua"></div>
+                                        <div class="color-option" data-color="#8e44ad" title="Púrpura oscuro"></div>
+                                        <div class="color-option" data-color="#c0392b" title="Rojo oscuro"></div>
+                                        <div class="color-option" data-color="#2980b9" title="Azul oscuro"></div>
+                                        <div class="color-option" data-color="#27ae60" title="Verde oscuro"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-lightbulb me-1"></i>
+                                    Haz clic en cualquier color para aplicarlo automáticamente
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botones de acción -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <div>
+                            <a href="{{ url_for('list_categories') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                        </div>
+                        <div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-{% if category %}save{% else %}plus{% endif %} me-2"></i>
+                                {% if category %}Actualizar Categoría{% else %}Crear Categoría{% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.color-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.color-option {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.color-option:hover {
+    transform: scale(1.1);
+    border-color: #fff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.color-option.selected {
+    border-color: #fff;
+    box-shadow: 0 0 0 2px var(--bs-primary);
+}
+
+.color-option::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>') no-repeat center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.color-option.selected::after {
+    opacity: 1;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Referencias a elementos
+const nameInput = document.getElementById('name');
+const colorInput = document.getElementById('color');
+const colorTextInput = document.getElementById('color-text');
+const descriptionInput = document.getElementById('description');
+
+const previewName = document.getElementById('preview-name');
+const previewDescription = document.getElementById('preview-description');
+const previewColorSample = document.getElementById('preview-color-sample');
+const previewBadge = document.getElementById('preview-badge');
+
+// Sincronizar color picker con input de texto
+colorInput.addEventListener('input', function() {
+    colorTextInput.value = this.value.toUpperCase();
+    updatePreview();
+});
+
+colorTextInput.addEventListener('input', function() {
+    const color = this.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+        colorInput.value = color;
+        updatePreview();
+    }
+});
+
+// Función para actualizar preview
+function updatePreview() {
+    // Nombre
+    previewName.textContent = nameInput.value || 'Nombre de la categoría';
+    
+    // Descripción
+    previewDescription.textContent = descriptionInput.value || 'Descripción de la categoría';
+    
+    // Color
+    const color = colorInput.value;
+    previewColorSample.style.backgroundColor = color;
+    previewBadge.style.backgroundColor = color;
+    previewBadge.textContent = nameInput.value || 'Ejemplo';
+    
+    // Actualizar selección en paleta
+    updatePaletteSelection(color);
+}
+
+// Actualizar selección en paleta de colores
+function updatePaletteSelection(selectedColor) {
+    document.querySelectorAll('.color-option').forEach(option => {
+        option.classList.remove('selected');
+        if (option.dataset.color === selectedColor) {
+            option.classList.add('selected');
+        }
+    });
+}
+
+// Event listeners para preview en tiempo real
+nameInput.addEventListener('input', updatePreview);
+descriptionInput.addEventListener('input', updatePreview);
+
+// Configurar paleta de colores
+document.querySelectorAll('.color-option').forEach(option => {
+    const color = option.dataset.color;
+    option.style.backgroundColor = color;
+    
+    option.addEventListener('click', function() {
+        colorInput.value = color;
+        colorTextInput.value = color.toUpperCase();
+        updatePreview();
+        
+        // Feedback visual
+        this.style.transform = 'scale(0.9)';
+        setTimeout(() => {
+            this.style.transform = '';
+        }, 150);
+    });
+});
+
+// Inicializar preview y paleta
+updatePreview();
+colorTextInput.value = colorInput.value.toUpperCase();
+
+// Validación del formulario
+document.querySelector('form').addEventListener('submit', function(e) {
+    const name = nameInput.value.trim();
+    const color = colorInput.value;
+    
+    if (!name) {
+        e.preventDefault();
+        alert('El nombre de la categoría es obligatorio');
+        nameInput.focus();
+        return;
+    }
+    
+    if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
+        e.preventDefault();
+        alert('El color debe tener un formato válido (ej: #3498db)');
+        colorTextInput.focus();
+        return;
+    }
+    
+    // Confirmación antes de guardar
+    const action = '{{ "actualizar" if category else "crear" }}';
+    if (!confirm(`¿Estás seguro de que quieres ${action} esta categoría?`)) {
+        e.preventDefault();
+    }
+});
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    // Ctrl+S para guardar
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        document.querySelector('form').submit();
+    }
+    
+    // ESC para cancelar
+    if (e.key === 'Escape') {
+        if (confirm('¿Estás seguro de que quieres cancelar? Los cambios no guardados se perderán.')) {
+            window.location.href = '{{ url_for("list_categories") }}';
+        }
+    }
+    
+    // Números 1-6 para seleccionar colores rápidamente
+    if (e.key >= '1' && e.key <= '6') {
+        e.preventDefault();
+        const colorOptions = document.querySelectorAll('.color-option');
+        const index = parseInt(e.key) - 1;
+        if (colorOptions[index]) {
+            colorOptions[index].click();
+        }
+    }
+});
+
+// Focus automático en el primer campo
+nameInput.focus();
+
+// Prevenir envío accidental del formulario
+let formChanged = false;
+document.querySelectorAll('input, textarea').forEach(field => {
+    field.addEventListener('change', () => formChanged = true);
+    field.addEventListener('input', () => formChanged = true);
+});
+
+window.addEventListener('beforeunload', function(e) {
+    if (formChanged) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+// Marcar formulario como enviado para evitar warning al guardar
+document.querySelector('form').addEventListener('submit', () => formChanged = false);
+
+// Generar color aleatorio
+function generateRandomColor() {
+    const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#34495e', '#e67e22', '#1abc9c', '#8e44ad', '#c0392b', '#2980b9', '#27ae60'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    colorInput.value = randomColor;
+    colorTextInput.value = randomColor.toUpperCase();
+    updatePreview();
+}
+
+// Agregar botón de color aleatorio
+const randomColorBtn = document.createElement('button');
+randomColorBtn.type = 'button';
+randomColorBtn.className = 'btn btn-outline-secondary btn-sm mt-2';
+randomColorBtn.innerHTML = '<i class="fas fa-random me-1"></i>Color Aleatorio';
+randomColorBtn.addEventListener('click', generateRandomColor);
+
+const colorGroup = document.querySelector('.input-group').parentNode;
+colorGroup.appendChild(randomColorBtn);
+</script>
+{% endblock %}

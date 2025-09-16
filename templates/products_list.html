@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}Productos - Epicuro{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-box me-3"></i>
+                    Gestión de Productos
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">Administra tu inventario y precios</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('new_product') }}" class="btn btn-light btn-lg">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    Nuevo Producto
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Productos -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list me-2"></i>
+            Lista de Productos
+        </h5>
+        <span class="badge bg-primary">{{ products|length }} productos</span>
+    </div>
+    <div class="card-body p-0">
+        {% if products %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Precio</th>
+                            <th>Estado</th>
+                            <th>Fecha Creación</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr class="{{ 'table-secondary' if not product.available }}">
+                            <td>
+                                <div>
+                                    <strong>{{ product.name }}</strong>
+                                    {% if product.description %}
+                                        <br><small class="text-muted">{{ product.description }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if product.category_name %}
+                                    <span class="badge" style="background-color: {{ product.category_color or '#6c757d' }};">
+                                        <i class="fas fa-tag me-1"></i>{{ product.category_name }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Sin categoría</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong class="text-success">${{ "{:,.0f}".format(product.price) }}</strong>
+                            </td>
+                            <td>
+                                {% if product.available %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>Disponible
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-times me-1"></i>No disponible
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ product.created_at.strftime('%d/%m/%Y') if product.created_at else 'N/A' }}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('edit_product', product_id=product.id) }}" 
+                                       class="btn btn-sm btn-outline-primary" 
+                                       title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% if product.available %}
+                                        <button class="btn btn-sm btn-outline-warning" 
+                                                onclick="toggleProduct({{ product.id }}, false)"
+                                                title="Desactivar">
+                                            <i class="fas fa-eye-slash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-success" 
+                                                onclick="toggleProduct({{ product.id }}, true)"
+                                                title="Activar">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            onclick="deleteProduct({{ product.id }}, '{{ product.name }}')"
+                                            title="Eliminar">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">No hay productos registrados</h4>
+                <p class="text-muted">Comienza agregando productos a tu inventario</p>
+                <a href="{{ url_for('new_product') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Agregar Primer Producto
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Acciones rápidas -->
+<div class="row mt-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-bolt me-2"></i>Acciones Rápidas
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('new_product') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Nuevo Producto
+                    </a>
+                    <a href="{{ url_for('list_categories') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-tags me-2"></i>Gestionar Categorías
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>Estadísticas
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="stat-item">
+                            <h4 class="text-success">{{ products|selectattr('available')|list|length }}</h4>
+                            <small class="text-muted">Disponibles</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-item">
+                            <h4 class="text-danger">{{ products|rejectattr('available')|list|length }}</h4>
+                            <small class="text-muted">Inactivos</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleProduct(productId, newStatus) {
+    const action = newStatus ? 'activar' : 'desactivar';
+    
+    if (confirm(`¿Estás seguro de que quieres ${action} este producto?`)) {
+        // Crear formulario para cambiar estado
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/products/${productId}/update`;
+        
+        // Obtener datos actuales del producto de la fila
+        const row = event.target.closest('tr');
+        const nameCell = row.cells[0].querySelector('strong').textContent;
+        const priceText = row.cells[2].querySelector('strong').textContent;
+        const price = priceText.replace(/[$,]/g, '');
+        
+        // Campos necesarios (simplificado para solo cambiar disponibilidad)
+        const fields = [
+            { name: 'name', value: nameCell },
+            { name: 'price', value: price },
+            { name: 'category_id', value: '1' }, // Valor por defecto
+            { name: 'available', value: newStatus ? '1' : '' }
+        ];
+        
+        fields.forEach(field => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = field.name;
+            input.value = field.value;
+            form.appendChild(input);
+        });
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function deleteProduct(productId, productName) {
+    if (confirm(`¿Estás seguro de que quieres eliminar "${productName}"?\n\nEsta acción desactivará el producto permanentemente.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/products/${productId}/delete`;
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    // Ctrl+N para nuevo producto
+    if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        window.location.href = '{{ url_for("new_product") }}';
+    }
+    
+    // Ctrl+K para buscar (futuro)
+    if (e.ctrlKey && e.key === 'k') {
+        e.preventDefault();
+        // Implementar búsqueda en el futuro
+        alert('Función de búsqueda próximamente');
+    }
+});
+
+// Filtro de búsqueda simple
+function addSearchFilter() {
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'form-control mb-3';
+    searchInput.placeholder = 'Buscar productos...';
+    searchInput.id = 'product-search';
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = document.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            const productName = row.cells[0].textContent.toLowerCase();
+            const categoryName = row.cells[1].textContent.toLowerCase();
+            
+            if (productName.includes(searchTerm) || categoryName.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+    // Insertar antes de la tabla
+    const tableCard = document.querySelector('.card .card-body');
+    if (tableCard) {
+        tableCard.insertBefore(searchInput, tableCard.firstChild);
+    }
+}
+
+// Agregar búsqueda si hay productos
+if ({{ products|length }} > 5) {
+    addSearchFilter();
+}
+</script>
+{% endblock %}

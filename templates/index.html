@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Epicuro{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-tachometer-alt me-3"></i>
+                    Dashboard Principal
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">Panel de control y estadísticas en tiempo real</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('new_order') }}" class="btn btn-light btn-lg">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    Nueva Comanda
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas Principales -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="stats-value">{{ stats.orders_today }}</div>
+                    <div class="stats-label">Órdenes Hoy</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-shopping-cart fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #2ecc71, #27ae60);">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="stats-value">${{ "{:,.0f}".format(stats.revenue_today) }}</div>
+                    <div class="stats-label">Ventas Hoy</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-dollar-sign fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #f39c12, #e67e22);">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="stats-value">{{ stats.total_products }}</div>
+                    <div class="stats-label">Productos Activos</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-box fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="stats-value">{{ stats.total_orders }}</div>
+                    <div class="stats-label">Total Órdenes</div>
+                </div>
+                <div class="stats-icon">
+                    <i class="fas fa-chart-line fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Acciones Rápidas -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-bolt me-2"></i>
+                    Acciones Rápidas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <a href="{{ url_for('new_order') }}" class="btn btn-primary btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none">
+                            <i class="fas fa-plus-circle fa-3x mb-2"></i>
+                            <span>Nueva Comanda</span>
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <a href="{{ url_for('list_orders') }}" class="btn btn-success btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none">
+                            <i class="fas fa-list fa-3x mb-2"></i>
+                            <span>Ver Comandas</span>
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <a href="{{ url_for('new_product') }}" class="btn btn-warning btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none">
+                            <i class="fas fa-box fa-3x mb-2"></i>
+                            <span>Nuevo Producto</span>
+                        </a>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <a href="{{ url_for('reports') }}" class="btn btn-info btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center text-decoration-none">
+                            <i class="fas fa-chart-bar fa-3x mb-2"></i>
+                            <span>Reportes</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Órdenes Recientes -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-clock me-2"></i>
+                    Órdenes Recientes
+                </h5>
+                <a href="{{ url_for('list_orders') }}" class="btn btn-outline-light btn-sm">
+                    Ver Todas
+                    <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_orders %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Cliente</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                    <th>Fecha</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders %}
+                                <tr>
+                                    <td>
+                                        <strong class="text-primary">{{ order.order_number }}</strong>
+                                    </td>
+                                    <td>
+                                        {% if order.customer_name %}
+                                            <i class="fas fa-user me-1"></i>{{ order.customer_name }}
+                                        {% else %}
+                                            <em class="text-muted">Sin nombre</em>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>${{ "{:,.0f}".format(order.total_amount) }}</strong>
+                                    </td>
+                                    <td>
+                                        {% if order.status == 'pending' %}
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-clock me-1"></i>Pendiente
+                                            </span>
+                                        {% elif order.status == 'preparing' %}
+                                            <span class="badge bg-info">
+                                                <i class="fas fa-utensils me-1"></i>Preparando
+                                            </span>
+                                        {% elif order.status == 'ready' %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i>Listo
+                                            </span>
+                                        {% elif order.status == 'completed' %}
+                                            <span class="badge bg-primary">
+                                                <i class="fas fa-check-double me-1"></i>Completado
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ order.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ order.created_at.strftime('%d/%m %H:%M') if order.created_at else 'N/A' }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('view_order', order_id=order.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye me-1"></i>Ver
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-shopping-cart fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">No hay órdenes recientes</h4>
+                        <p class="text-muted">Las órdenes aparecerán aquí cuando se creen</p>
+                        <a href="{{ url_for('new_order') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Crear Primera Orden
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh stats every 30 seconds
+    setInterval(function() {
+        location.reload();
+    }, 30000);
+</script>
+{% endblock %}
