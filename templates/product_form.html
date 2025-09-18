@@ -1,162 +1,359 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if product %}Editar Producto{% else %}Nuevo Producto{% endif %} - Sistema de Inventario</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .product-preview {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .preview-card {
+            max-width: 300px;
+            margin: 0 auto;
+        }
+        .variations-section {
+            display: none;
+            transition: all 0.3s ease;
+        }
+        .variation-group {
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: #f8f9fa;
+        }
+        .variation-group.selected {
+            border-color: #0d6efd;
+            background-color: #e7f1ff;
+        }
+        .required-badge {
+            background-color: #dc3545;
+            color: white;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .optional-badge {
+            background-color: #6c757d;
+            color: white;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2><i class="fas fa-{% if product %}edit{% else %}plus{% endif %} me-2"></i>
+                            {% if product %}Editar Producto{% else %}Nuevo Producto{% endif %}</h2>
+                        <p class="text-muted mb-0">
+                            {% if product %}Modifica la información del producto{% else %}Agrega un nuevo producto al inventario{% endif %}
+                        </p>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('list_products') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Volver
+                        </a>
+                    </div>
+                </div>
 
-{% block title %}
-{% if product %}Editar Producto{% else %}Nuevo Producto{% endif %} - Epicuro
-{% endblock %}
-
-{% block content %}
-<div class="page-header">
-    <div class="container">
-        <div class="row align-items-center">
-            <div class="col-md-8">
-                <h1 class="mb-0">
-                    <i class="fas fa-{% if product %}edit{% else %}plus-circle{% endif %} me-3"></i>
-                    {% if product %}Editar Producto{% else %}Nuevo Producto{% endif %}
-                </h1>
-                <p class="mb-0 mt-2 opacity-75">
-                    {% if product %}Modifica los datos del producto{% else %}Agrega un nuevo producto al inventario{% endif %}
-                </p>
-            </div>
-            <div class="col-md-4 text-end">
-                <a href="{{ url_for('list_products') }}" class="btn btn-outline-light">
-                    <i class="fas fa-arrow-left me-2"></i>Volver a Productos
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Información del Producto
-                </h5>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="{% if product %}{{ url_for('update_product', product_id=product.id) }}{% else %}{{ url_for('create_product') }}{% endif %}">
+                <!-- Formulario Principal -->
+                <form method="post" class="needs-validation" novalidate>
                     <div class="row">
-                        <div class="col-md-8">
-                            <div class="mb-3">
-                                <label for="name" class="form-label">
-                                    <i class="fas fa-tag me-1"></i>Nombre del Producto *
-                                </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="name" 
-                                       name="name" 
-                                       value="{{ product.name if product else '' }}"
-                                       placeholder="Ej: Sándwich Italiano"
-                                       required 
-                                       autocomplete="off">
-                                <div class="form-text">Nombre descriptivo del producto</div>
+                        <!-- Información Básica -->
+                        <div class="col-lg-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-info-circle me-2"></i>Información del Producto
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <div class="mb-3">
+                                                <label for="name" class="form-label">
+                                                    <i class="fas fa-tag me-1"></i>Nombre del Producto
+                                                </label>
+                                                <input type="text" 
+                                                       class="form-control" 
+                                                       id="name" 
+                                                       name="name" 
+                                                       value="{% if product %}{{ product.name }}{% endif %}"
+                                                       required
+                                                       onkeyup="updatePreview()">
+                                                <div class="invalid-feedback">
+                                                    Por favor ingresa un nombre para el producto.
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="category_id" class="form-label">
+                                                    <i class="fas fa-list me-1"></i>Categoría
+                                                </label>
+                                                <select class="form-select" id="category_id" name="category_id" required onchange="updatePreview()">
+                                                    <option value="">Selecciona una categoría</option>
+                                                    {% for category in categories %}
+                                                    <option value="{{ category.id }}" 
+                                                            {% if product and product.category_id == category.id %}selected{% endif %}>
+                                                        {{ category.name }}
+                                                    </option>
+                                                    {% endfor %}
+                                                </select>
+                                                <div class="invalid-feedback">
+                                                    Por favor selecciona una categoría.
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="price" class="form-label">
+                                                    <i class="fas fa-dollar-sign me-1"></i>Precio de Venta
+                                                </label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="number" 
+                                                           class="form-control" 
+                                                           id="price" 
+                                                           name="price" 
+                                                           value="{% if product %}{{ product.price }}{% endif %}"
+                                                           step="1"
+                                                           min="0"
+                                                           required
+                                                           onkeyup="updatePreview()">
+                                                </div>
+                                                <div class="invalid-feedback">
+                                                    Por favor ingresa un precio válido.
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-12">
+                                            <div class="mb-3">
+                                                <label for="description" class="form-label">
+                                                    <i class="fas fa-align-left me-1"></i>Descripción
+                                                </label>
+                                                <textarea class="form-control" 
+                                                          id="description" 
+                                                          name="description" 
+                                                          rows="3"
+                                                          onkeyup="updatePreview()">{% if product %}{{ product.description }}{% endif %}</textarea>
+                                                <div class="form-text">Describe los ingredientes y características del producto</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">
+                                                    <i class="fas fa-toggle-on me-1"></i>Estado
+                                                </label>
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" 
+                                                           type="checkbox" 
+                                                           id="available" 
+                                                           name="available"
+                                                           {% if not product or product.available %}checked{% endif %}>
+                                                    <label class="form-check-label" for="available">
+                                                        Producto disponible para venta
+                                                    </label>
+                                                </div>
+                                                <div class="form-text">Los productos no disponibles no aparecerán en el menú</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SECCIÓN DE VARIACIONES -->
+                            <div class="card mt-4">
+                                <div class="card-header">
+                                    <h6 class="card-title mb-0">
+                                        <i class="fas fa-cog me-2"></i>Variaciones del Producto
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" 
+                                                   type="checkbox" 
+                                                   id="has_variations" 
+                                                   name="has_variations" 
+                                                   onchange="toggleVariationsSection()">
+                                            <label class="form-check-label" for="has_variations">
+                                                <strong>Este producto tiene variaciones</strong>
+                                            </label>
+                                        </div>
+                                        <div class="form-text">Permite al cliente personalizar este producto (proteína, tamaño, etc.)</div>
+                                    </div>
+
+                                    <div id="variations-content" class="variations-section">
+                                        <div class="alert alert-info d-flex align-items-center">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <div>
+                                                <strong>¿Cómo funcionan las variaciones?</strong><br>
+                                                Selecciona los grupos de variación que aplicarán a este producto. 
+                                                Los clientes podrán elegir opciones como proteína (Churrasco, Lomito, Pollo) o tamaño.
+                                            </div>
+                                        </div>
+
+                                        <h6 class="mb-3"><i class="fas fa-list-check me-2"></i>Grupos de Variación Disponibles</h6>
+                                        
+                                        <div class="row">
+                                            <!-- Grupo Proteína -->
+                                            <div class="col-md-6 mb-3">
+                                                <div class="variation-group" id="group-1">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input variation-checkbox" 
+                                                               type="checkbox" 
+                                                               value="1" 
+                                                               id="variation_group_1" 
+                                                               name="variation_groups[]"
+                                                               onchange="toggleVariationGroup(1)">
+                                                        <label class="form-check-label fw-bold" for="variation_group_1">
+                                                            <i class="fas fa-drumstick-bite me-2 text-danger"></i>Proteína
+                                                        </label>
+                                                    </div>
+                                                    <div class="mt-2 text-muted small">
+                                                        Opciones: Churrasco, Lomito, Pollo
+                                                    </div>
+                                                    <div class="mt-2">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" 
+                                                                   type="checkbox" 
+                                                                   value="1" 
+                                                                   id="required_group_1" 
+                                                                   name="required_groups[]">
+                                                            <label class="form-check-label small" for="required_group_1">
+                                                                <span class="required-badge">REQUERIDO</span>
+                                                                El cliente debe elegir una opción
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Grupo Tamaño -->
+                                            <div class="col-md-6 mb-3">
+                                                <div class="variation-group" id="group-2">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input variation-checkbox" 
+                                                               type="checkbox" 
+                                                               value="2" 
+                                                               id="variation_group_2" 
+                                                               name="variation_groups[]"
+                                                               onchange="toggleVariationGroup(2)">
+                                                        <label class="form-check-label fw-bold" for="variation_group_2">
+                                                            <i class="fas fa-expand-arrows-alt me-2 text-primary"></i>Tamaño
+                                                        </label>
+                                                    </div>
+                                                    <div class="mt-2 text-muted small">
+                                                        Opciones: Pequeño, Mediano, Grande
+                                                    </div>
+                                                    <div class="mt-2">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" 
+                                                                   type="checkbox" 
+                                                                   value="2" 
+                                                                   id="required_group_2" 
+                                                                   name="required_groups[]">
+                                                            <label class="form-check-label small" for="required_group_2">
+                                                                <span class="required-badge">REQUERIDO</span>
+                                                                El cliente debe elegir una opción
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Grupo Extras -->
+                                            <div class="col-md-6 mb-3">
+                                                <div class="variation-group" id="group-3">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input variation-checkbox" 
+                                                               type="checkbox" 
+                                                               value="3" 
+                                                               id="variation_group_3" 
+                                                               name="variation_groups[]"
+                                                               onchange="toggleVariationGroup(3)">
+                                                        <label class="form-check-label fw-bold" for="variation_group_3">
+                                                            <i class="fas fa-plus-circle me-2 text-success"></i>Extras
+                                                        </label>
+                                                    </div>
+                                                    <div class="mt-2 text-muted small">
+                                                        Opciones: Queso, Palta, Tocino
+                                                    </div>
+                                                    <div class="mt-2">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" 
+                                                                   type="checkbox" 
+                                                                   value="3" 
+                                                                   id="required_group_3" 
+                                                                   name="required_groups[]">
+                                                            <label class="form-check-label small" for="required_group_3">
+                                                                <span class="optional-badge">OPCIONAL</span>
+                                                                El cliente puede elegir o no
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="alert alert-warning mt-3">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            <strong>Importante:</strong> Los grupos marcados como "requeridos" obligarán al cliente a seleccionar una opción antes de agregar el producto al carrito.
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="price" class="form-label">
-                                    <i class="fas fa-dollar-sign me-1"></i>Precio *
-                                </label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" 
-                                           class="form-control" 
-                                           id="price" 
-                                           name="price" 
-                                           value="{{ product.price if product else '' }}"
-                                           placeholder="0"
-                                           min="0" 
-                                           step="1"
-                                           required>
+
+                        <!-- Vista Previa -->
+                        <div class="col-lg-4">
+                            <div class="card bg-light">
+                                <div class="card-header">
+                                    <h6 class="card-title mb-0">
+                                        <i class="fas fa-eye me-2"></i>Vista Previa
+                                    </h6>
                                 </div>
-                                <div class="form-text">Precio en pesos chilenos</div>
+                                <div class="card-body">
+                                    <div class="product-preview">
+                                        <div class="preview-card">
+                                            <div class="card border-0 shadow-sm">
+                                                <div class="card-body text-center">
+                                                    <h6 class="card-title" id="preview-name">Nombre del Producto</h6>
+                                                    <p class="text-muted small mb-2" id="preview-category">Categoría</p>
+                                                    <p class="card-text small" id="preview-description">Descripción del producto</p>
+                                                    <div class="mt-3">
+                                                        <span class="badge bg-primary fs-6" id="preview-price">$0</span>
+                                                    </div>
+                                                    <div class="mt-2" id="preview-variations">
+                                                        <!-- Variaciones se mostrarán aquí -->
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="description" class="form-label">
-                            <i class="fas fa-align-left me-1"></i>Descripción
-                        </label>
-                        <textarea class="form-control" 
-                                  id="description" 
-                                  name="description" 
-                                  rows="3"
-                                  placeholder="Descripción detallada del producto (opcional)">{{ product.description if product else '' }}</textarea>
-                        <div class="form-text">Ingredientes, características especiales, etc.</div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="category_id" class="form-label">
-                                    <i class="fas fa-folder me-1"></i>Categoría *
-                                </label>
-                                <select class="form-select" id="category_id" name="category_id" required>
-                                    <option value="">Selecciona una categoría</option>
-                                    {% for category in categories %}
-                                    <option value="{{ category.id }}" 
-                                            {% if product and product.category_id == category.id %}selected{% endif %}>
-                                        {{ category.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                                <div class="form-text">
-                                    Categoría para organizar el producto
-                                    <a href="{{ url_for('new_category') }}" class="ms-2" target="_blank">
-                                        <i class="fas fa-plus"></i> Nueva categoría
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">
-                                    <i class="fas fa-toggle-on me-1"></i>Estado
-                                </label>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" 
-                                           type="checkbox" 
-                                           id="available" 
-                                           name="available"
-                                           {% if not product or product.available %}checked{% endif %}>
-                                    <label class="form-check-label" for="available">
-                                        Producto disponible para venta
-                                    </label>
-                                </div>
-                                <div class="form-text">Los productos no disponibles no aparecerán en el menú</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Preview del producto -->
-                    <div class="card bg-light mt-4">
-                        <div class="card-header">
-                            <h6 class="card-title mb-0">
-                                <i class="fas fa-eye me-2"></i>Vista Previa
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="row align-items-center">
-                                <div class="col-md-8">
-                                    <h6 class="mb-1" id="preview-name">Nombre del producto</h6>
-                                    <p class="mb-0 text-muted" id="preview-description">Descripción del producto</p>
-                                    <small class="text-muted" id="preview-category">Categoría</small>
-                                </div>
-                                <div class="col-md-4 text-end">
-                                    <span class="badge bg-success fs-6" id="preview-price">$0</span>
-                                    <br>
-                                    <small class="text-muted" id="preview-status">Estado</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Botones de acción -->
+
+                    <!-- Botones de Acción -->
                     <div class="d-flex justify-content-between mt-4">
                         <div>
                             <a href="{{ url_for('list_products') }}" class="btn btn-outline-secondary">
@@ -178,182 +375,146 @@
                 </form>
             </div>
         </div>
-        
-        <!-- Información adicional -->
-        <div class="card mt-4">
-            <div class="card-header">
-                <h6 class="card-title mb-0">
-                    <i class="fas fa-lightbulb me-2"></i>Consejos
-                </h6>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6><i class="fas fa-check-circle text-success me-2"></i>Buenas prácticas</h6>
-                        <ul class="list-unstyled">
-                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Usa nombres descriptivos y claros</li>
-                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Incluye ingredientes principales en la descripción</li>
-                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Revisa los precios regularmente</li>
-                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Organiza productos por categorías</li>
-                        </ul>
-                    </div>
-                    <div class="col-md-6">
-                        <h6><i class="fas fa-keyboard text-info me-2"></i>Atajos de teclado</h6>
-                        <ul class="list-unstyled">
-                            <li><i class="fas fa-caret-right me-2 text-info"></i><code>Ctrl + S</code> - Guardar producto</li>
-                            <li><i class="fas fa-caret-right me-2 text-info"></i><code>Esc</code> - Cancelar</li>
-                            <li><i class="fas fa-caret-right me-2 text-info"></i><code>Tab</code> - Navegar entre campos</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
-</div>
-{% endblock %}
 
-{% block extra_js %}
-<script>
-// Referencias a elementos
-const nameInput = document.getElementById('name');
-const priceInput = document.getElementById('price');
-const descriptionInput = document.getElementById('description');
-const categorySelect = document.getElementById('category_id');
-const availableCheck = document.getElementById('available');
-
-const previewName = document.getElementById('preview-name');
-const previewPrice = document.getElementById('preview-price');
-const previewDescription = document.getElementById('preview-description');
-const previewCategory = document.getElementById('preview-category');
-const previewStatus = document.getElementById('preview-status');
-
-// Función para actualizar preview
-function updatePreview() {
-    // Nombre
-    previewName.textContent = nameInput.value || 'Nombre del producto';
-    
-    // Precio
-    const price = parseFloat(priceInput.value) || 0;
-    previewPrice.textContent = `${price.toLocaleString()}`;
-    
-    // Descripción
-    previewDescription.textContent = descriptionInput.value || 'Descripción del producto';
-    
-    // Categoría
-    const selectedCategory = categorySelect.options[categorySelect.selectedIndex];
-    previewCategory.textContent = selectedCategory.value ? selectedCategory.text : 'Sin categoría';
-    
-    // Estado
-    previewStatus.textContent = availableCheck.checked ? 'Disponible' : 'No disponible';
-    previewStatus.className = availableCheck.checked ? 'text-success' : 'text-danger';
-}
-
-// Event listeners para actualizar preview en tiempo real
-nameInput.addEventListener('input', updatePreview);
-priceInput.addEventListener('input', updatePreview);
-descriptionInput.addEventListener('input', updatePreview);
-categorySelect.addEventListener('change', updatePreview);
-availableCheck.addEventListener('change', updatePreview);
-
-// Inicializar preview
-updatePreview();
-
-// Validación del formulario
-document.querySelector('form').addEventListener('submit', function(e) {
-    const name = nameInput.value.trim();
-    const price = parseFloat(priceInput.value);
-    const categoryId = categorySelect.value;
-    
-    if (!name) {
-        e.preventDefault();
-        alert('El nombre del producto es obligatorio');
-        nameInput.focus();
-        return;
-    }
-    
-    if (!price || price <= 0) {
-        e.preventDefault();
-        alert('El precio debe ser mayor a 0');
-        priceInput.focus();
-        return;
-    }
-    
-    if (!categoryId) {
-        e.preventDefault();
-        alert('Debes seleccionar una categoría');
-        categorySelect.focus();
-        return;
-    }
-    
-    // Confirmación antes de guardar
-    const action = '{{ "actualizar" if product else "crear" }}';
-    if (!confirm(`¿Estás seguro de que quieres ${action} este producto?`)) {
-        e.preventDefault();
-    }
-});
-
-// Función para eliminar producto
-function deleteProduct() {
-    if (confirm('¿Estás seguro de que quieres eliminar este producto?\n\nEsta acción no se puede deshacer.')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/products/{{ product.id if product else 0 }}/delete';
-        
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
-// Atajos de teclado
-document.addEventListener('keydown', function(e) {
-    // Ctrl+S para guardar
-    if (e.ctrlKey && e.key === 's') {
-        e.preventDefault();
-        document.querySelector('form').submit();
-    }
-    
-    // ESC para cancelar
-    if (e.key === 'Escape') {
-        if (confirm('¿Estás seguro de que quieres cancelar? Los cambios no guardados se perderán.')) {
-            window.location.href = '{{ url_for("list_products") }}';
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Funciones para las variaciones
+        function toggleVariationsSection() {
+            const checkbox = document.getElementById('has_variations');
+            const content = document.getElementById('variations-content');
+            
+            if (checkbox.checked) {
+                content.style.display = 'block';
+                content.classList.add('show');
+            } else {
+                content.style.display = 'none';
+                content.classList.remove('show');
+                
+                // Desmarcar todas las variaciones
+                document.querySelectorAll('.variation-checkbox').forEach(cb => {
+                    cb.checked = false;
+                    toggleVariationGroup(cb.value);
+                });
+            }
+            updatePreview();
         }
-    }
-});
 
-// Auto-formatear precio
-priceInput.addEventListener('blur', function() {
-    const value = parseFloat(this.value);
-    if (!isNaN(value)) {
-        this.value = Math.round(value);
-    }
-});
+        function toggleVariationGroup(groupId) {
+            const checkbox = document.getElementById(`variation_group_${groupId}`);
+            const group = document.getElementById(`group-${groupId}`);
+            const requiredCheckbox = document.getElementById(`required_group_${groupId}`);
+            
+            if (checkbox.checked) {
+                group.classList.add('selected');
+                requiredCheckbox.disabled = false;
+            } else {
+                group.classList.remove('selected');
+                requiredCheckbox.checked = false;
+                requiredCheckbox.disabled = true;
+            }
+            updatePreview();
+        }
 
-// Focus automático en el primer campo
-nameInput.focus();
+        // Función para actualizar la vista previa
+        function updatePreview() {
+            const name = document.getElementById('name').value || 'Nombre del Producto';
+            const categorySelect = document.getElementById('category_id');
+            const category = categorySelect.options[categorySelect.selectedIndex].text || 'Categoría';
+            const description = document.getElementById('description').value || 'Descripción del producto';
+            const price = document.getElementById('price').value || '0';
+            
+            document.getElementById('preview-name').textContent = name;
+            document.getElementById('preview-category').textContent = category;
+            document.getElementById('preview-description').textContent = description;
+            document.getElementById('preview-price').textContent = `$${price}`;
+            
+            // Actualizar variaciones en preview
+            updateVariationsPreview();
+        }
 
-// Agregar indicador de campos requeridos
-document.querySelectorAll('input[required], select[required]').forEach(field => {
-    const label = document.querySelector(`label[for="${field.id}"]`);
-    if (label && !label.textContent.includes('*')) {
-        label.innerHTML = label.innerHTML;
-    }
-});
+        function updateVariationsPreview() {
+            const variationsContainer = document.getElementById('preview-variations');
+            const hasVariations = document.getElementById('has_variations').checked;
+            
+            if (!hasVariations) {
+                variationsContainer.innerHTML = '';
+                return;
+            }
+            
+            let variationsHtml = '<div class="mt-2"><small class="text-muted">Variaciones disponibles:</small><br>';
+            
+            // Verificar proteína
+            if (document.getElementById('variation_group_1').checked) {
+                const required = document.getElementById('required_group_1').checked;
+                variationsHtml += `<span class="badge ${required ? 'bg-danger' : 'bg-secondary'} me-1 mb-1">Proteína ${required ? '(Requerido)' : ''}</span>`;
+            }
+            
+            // Verificar tamaño
+            if (document.getElementById('variation_group_2').checked) {
+                const required = document.getElementById('required_group_2').checked;
+                variationsHtml += `<span class="badge ${required ? 'bg-danger' : 'bg-secondary'} me-1 mb-1">Tamaño ${required ? '(Requerido)' : ''}</span>`;
+            }
+            
+            // Verificar extras
+            if (document.getElementById('variation_group_3').checked) {
+                const required = document.getElementById('required_group_3').checked;
+                variationsHtml += `<span class="badge ${required ? 'bg-danger' : 'bg-secondary'} me-1 mb-1">Extras ${required ? '(Requerido)' : ''}</span>`;
+            }
+            
+            variationsHtml += '</div>';
+            variationsContainer.innerHTML = variationsHtml;
+        }
 
-// Prevenir envío accidental del formulario
-let formChanged = false;
-document.querySelectorAll('input, select, textarea').forEach(field => {
-    field.addEventListener('change', () => formChanged = true);
-    field.addEventListener('input', () => formChanged = true);
-});
+        // Función para eliminar producto
+        function deleteProduct() {
+            if (confirm('¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer.')) {
+                // Implementar eliminación
+                window.location.href = '{{ url_for("delete_product", id=product.id) if product else "#" }}';
+            }
+        }
 
-window.addEventListener('beforeunload', function(e) {
-    if (formChanged) {
-        e.preventDefault();
-        e.returnValue = '';
-    }
-});
+        // Validación del formulario
+        (() => {
+            'use strict';
+            const forms = document.querySelectorAll('.needs-validation');
+            Array.from(forms).forEach(form => {
+                form.addEventListener('submit', event => {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        })();
 
-// Marcar formulario como enviado para evitar warning al guardar
-document.querySelector('form').addEventListener('submit', () => formChanged = false);
-</script>
-{% endblock %}
+        // Inicializar vista previa
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePreview();
+            
+            // Si estamos editando, cargar variaciones existentes
+            {% if product and product.variations %}
+            document.getElementById('has_variations').checked = true;
+            toggleVariationsSection();
+            
+            // Marcar grupos existentes
+            {% for variation in product.variations %}
+            const groupCheckbox = document.getElementById('variation_group_{{ variation.variation_group_id }}');
+            if (groupCheckbox) {
+                groupCheckbox.checked = true;
+                toggleVariationGroup({{ variation.variation_group_id }});
+                
+                {% if variation.required %}
+                document.getElementById('required_group_{{ variation.variation_group_id }}').checked = true;
+                {% endif %}
+            }
+            {% endfor %}
+            
+            updatePreview();
+            {% endif %}
+        });
+    </script>
+</body>
+</html>

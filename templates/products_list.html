@@ -82,7 +82,7 @@
                             </td>
                             <td>
                                 <small class="text-muted">
-                                    {{ product.created_at.strftime('%d/%m/%Y') if product.created_at else 'N/A' }}
+                                    {{ product.created_at|dateformat }}
                                 </small>
                             </td>
                             <td>

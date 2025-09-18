@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+
+{% block title %}Comanda {{ order.order_number }} - Epicuro{% endblock %}
+
+{% block extra_css %}
+<style>
+    .receipt-view {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        max-width: 400px;
+        margin: 0 auto;
+    }
+    
+    .receipt-header {
+        text-align: center;
+        padding: 20px;
+        border-bottom: 2px dashed #dee2e6;
+    }
+    
+    .receipt-body {
+        padding: 20px;
+    }
+    
+    .receipt-footer {
+        text-align: center;
+        padding: 20px;
+        border-top: 2px dashed #dee2e6;
+        background: #f8f9fa;
+        border-radius: 0 0 15px 15px;
+    }
+    
+    .item-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #f1f3f4;
+    }
+    
+    .item-row:last-child {
+        border-bottom: none;
+    }
+    
+    .total-row {
+        font-size: 1.2rem;
+        font-weight: bold;
+        padding: 15px 0 10px 0;
+        border-top: 2px solid #dee2e6;
+        margin-top: 10px;
+    }
+    
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        
+        .receipt-view {
+            box-shadow: none;
+            max-width: none;
+        }
+        
+        .page-header,
+        .navbar,
+        .footer {
+            display: none !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header no-print">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-receipt me-3"></i>
+                    Comanda {{ order.order_number }}
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">Detalles de la orden</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('list_orders') }}" class="btn btn-outline-light me-2">
+                    <i class="fas fa-arrow-left me-2"></i>Volver
+                </a>
+                <button onclick="window.print()" class="btn btn-light">
+                    <i class="fas fa-print me-2"></i>Imprimir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Vista principal de la orden -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Información de la Orden
+                </h5>
+                
+                <!-- Cambio de estado -->
+                <div class="dropdown no-print">
+                    {% if order.status == 'pending' %}
+                        <button class="btn btn-warning dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-clock me-1"></i>Pendiente
+                        </button>
+                    {% elif order.status == 'preparing' %}
+                        <button class="btn btn-info dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-utensils me-1"></i>Preparando
+                        </button>
+                    {% elif order.status == 'ready' %}
+                        <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-check me-1"></i>Listo
+                        </button>
+                    {% elif order.status == 'completed' %}
+                        <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-check-double me-1"></i>Completado
+                        </button>
+                    {% elif order.status == 'cancelled' %}
+                        <button class="btn btn-danger dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-times me-1"></i>Cancelado
+                        </button>
+                    {% endif %}
+                    
+                    <ul class="dropdown-menu">
+                        <li><button class="dropdown-item" onclick="updateStatus('pending')">
+                            <i class="fas fa-clock me-2 text-warning"></i>Pendiente
+                        </button></li>
+                        <li><button class="dropdown-item" onclick="updateStatus('preparing')">
+                            <i class="fas fa-utensils me-2 text-info"></i>Preparando
+                        </button></li>
+                        <li><button class="dropdown-item" onclick="updateStatus('ready')">
+                            <i class="fas fa-check me-2 text-success"></i>Listo
+                        </button></li>
+                        <li><button class="dropdown-item" onclick="updateStatus('completed')">
+                            <i class="fas fa-check-double me-2 text-primary"></i>Completado
+                        </button></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button class="dropdown-item" onclick="updateStatus('cancelled')">
+                            <i class="fas fa-times me-2 text-danger"></i>Cancelar
+                        </button></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-user me-2"></i>Cliente</h6>
+                        <p class="mb-3">
+                            {{ order.customer_name if order.customer_name else 'Sin nombre' }}<br>
+                            {% if order.customer_phone %}
+                                <small class="text-muted">
+                                    <i class="fas fa-phone me-1"></i>{{ order.customer_phone }}
+                                </small>
+                            {% endif %}
+                        </p>
+                        
+                        <h6><i class="fas fa-credit-card me-2"></i>Método de Pago</h6>
+                        <p class="mb-3">
+                            {% if order.payment_method == 'efectivo' %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-money-bill me-1"></i>Efectivo
+                                </span>
+                            {% elif order.payment_method == 'tarjeta' %}
+                                <span class="badge bg-primary">
+                                    <i class="fas fa-credit-card me-1"></i>Tarjeta
+                                </span>
+                            {% elif order.payment_method == 'transferencia' %}
+                                <span class="badge bg-info">
+                                    <i class="fas fa-exchange-alt me-1"></i>Transferencia
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ order.payment_method }}</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-calendar me-2"></i>Fecha y Hora</h6>
+                        <p class="mb-3">
+                            {{ order.created_at|dateformat('%d/%m/%Y %H:%M') }}
+                        </p>
+                        
+                        {% if order.notes %}
+                        <h6><i class="fas fa-sticky-note me-2"></i>Notas</h6>
+                        <p class="mb-3">{{ order.notes }}</p>
+                        {% endif %}
+                        
+                        <h6><i class="fas fa-clock me-2"></i>Última Actualización</h6>
+                        <p class="mb-3">
+                            <small class="text-muted">
+                                {{ order.updated_at|dateformat('%d/%m/%Y %H:%M') if order.updated_at else order.created_at|dateformat('%d/%m/%Y %H:%M') if order.created_at else 'N/A' }}
+                            </small>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Items de la orden -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    Productos Ordenados
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                {% if order_items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th class="text-center">Cantidad</th>
+                                    <th class="text-end">Precio Unit.</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order_items %}
+                                <tr>
+                                    <td>
+                                        <div>
+                                            <strong>{{ item.product_name }}</strong>
+                                            {% if item.notes %}
+                                                <br><small class="text-muted">{{ item.notes }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary">{{ item.quantity }}</span>
+                                    </td>
+                                    <td class="text-end">
+                                        ${{ "{:,.0f}".format(item.unit_price) }}
+                                    </td>
+                                    <td class="text-end">
+                                        <strong>${{ "{:,.0f}".format(item.total_price) }}</strong>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-light">
+                                    <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+                                    <td class="text-end"><strong>${{ "{:,.0f}".format(order.subtotal) }}</strong></td>
+                                </tr>
+                                {% if order.discount > 0 %}
+                                <tr class="table-light">
+                                    <td colspan="3" class="text-end"><strong>Descuento:</strong></td>
+                                    <td class="text-end"><strong class="text-danger">-${{ "{:,.0f}".format(order.discount) }}</strong></td>
+                                </tr>
+                                {% endif %}
+                                <tr class="table-primary">
+                                    <td colspan="3" class="text-end"><strong>TOTAL:</strong></td>
+                                    <td class="text-end"><strong class="fs-5">${{ "{:,.0f}".format(order.total_amount) }}</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No hay productos en esta orden</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Vista de recibo para impresión -->
+    <div class="col-lg-4">
+        <div class="receipt-view">
+            <div class="receipt-header">
+                <h3 class="mb-1">EPICURO</h3>
+                <p class="mb-1">Sistema de Gestión</p>
+                <hr>
+                <h5>{{ order.order_number }}</h5>
+                <p class="mb-0">{{ order.created_at|dateformat('%d/%m/%Y %H:%M') }}</p>
+            </div>
+            
+            <div class="receipt-body">
+                {% if order.customer_name %}
+                <div class="mb-3">
+                    <strong>Cliente:</strong> {{ order.customer_name }}
+                    {% if order.customer_phone %}
+                        <br><small>Tel: {{ order.customer_phone }}</small>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                <div class="mb-3">
+                    <strong>Estado:</strong>
+                    {% if order.status == 'pending' %}
+                        Pendiente
+                    {% elif order.status == 'preparing' %}
+                        Preparando
+                    {% elif order.status == 'ready' %}
+                        Listo
+                    {% elif order.status == 'completed' %}
+                        Completado
+                    {% elif order.status == 'cancelled' %}
+                        Cancelado
+                    {% else %}
+                        {{ order.status }}
+                    {% endif %}
+                </div>
+                
+                <hr>
+                
+                {% for item in order_items %}
+                <div class="item-row">
+                    <div>
+                        <div><strong>{{ item.product_name }}</strong></div>
+                        <small class="text-muted">{{ item.quantity }} x ${{ "{:,.0f}".format(item.unit_price) }}</small>
+                    </div>
+                    <div>
+                        <strong>${{ "{:,.0f}".format(item.total_price) }}</strong>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                <div class="total-row d-flex justify-content-between">
+                    <span>TOTAL:</span>
+                    <span>${{ "{:,.0f}".format(order.total_amount) }}</span>
+                </div>
+                
+                <div class="mt-3">
+                    <strong>Pago:</strong> 
+                    {% if order.payment_method == 'efectivo' %}
+                        Efectivo
+                    {% elif order.payment_method == 'tarjeta' %}
+                        Tarjeta
+                    {% elif order.payment_method == 'transferencia' %}
+                        Transferencia
+                    {% else %}
+                        {{ order.payment_method }}
+                    {% endif %}
+                </div>
+                
+                {% if order.notes %}
+                <div class="mt-3">
+                    <strong>Notas:</strong><br>
+                    <small>{{ order.notes }}</small>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="receipt-footer">
+                <p class="mb-1"><small>¡Gracias por su compra!</small></p>
+                <p class="mb-0"><small>www.epicuro.cl</small></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateStatus(newStatus) {
+    if (confirm('¿Estás seguro de que quieres cambiar el estado de esta orden?')) {
+        // Crear formulario para enviar el cambio
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/orders/{{ order.id }}/update_status';
+        
+        const statusInput = document.createElement('input');
+        statusInput.type = 'hidden';
+        statusInput.name = 'status';
+        statusInput.value = newStatus;
+        
+        form.appendChild(statusInput);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    // Ctrl+P para imprimir
+    if (e.ctrlKey && e.key === 'p') {
+        e.preventDefault();
+        window.print();
+    }
+    
+    // ESC para volver
+    if (e.key === 'Escape') {
+        window.location.href = '{{ url_for("list_orders") }}';
+    }
+    
+    // Números para cambiar estado rápidamente
+    if (e.key >= '1' && e.key <= '4') {
+        e.preventDefault();
+        const statuses = ['pending', 'preparing', 'ready', 'completed'];
+        const statusIndex = parseInt(e.key) - 1;
+        if (statusIndex < statuses.length) {
+            updateStatus(statuses[statusIndex]);
+        }
+    }
+});
+
+// Auto-refresh cada 30 segundos
+setInterval(function() {
+    // Solo refresh si el estado no es completado o cancelado
+    const currentStatus = '{{ order.status }}';
+    if (currentStatus !== 'completed' && currentStatus !== 'cancelled') {
+        location.reload();
+    }
+}, 30000);
+</script>
+{% endblock %}

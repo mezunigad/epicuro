@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}Proveedores - Epicuro{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-truck me-3"></i>
+                    Gestión de Proveedores
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">Administra tus proveedores e información de contacto</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-light btn-lg" onclick="alert('Función en desarrollo')">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    Nuevo Proveedor
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros y Búsqueda -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="input-group">
+            <span class="input-group-text">
+                <i class="fas fa-search"></i>
+            </span>
+            <input type="text" class="form-control" placeholder="Buscar proveedor..." id="searchSupplier">
+        </div>
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" id="filterStatus">
+            <option value="">Todos los estados</option>
+            <option value="active">Activos</option>
+            <option value="inactive">Inactivos</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" id="filterType">
+            <option value="">Todos los tipos</option>
+            <option value="food">Alimentos</option>
+            <option value="beverage">Bebidas</option>
+            <option value="equipment">Equipos</option>
+            <option value="service">Servicios</option>
+        </select>
+    </div>
+</div>
+
+<!-- Lista de Proveedores -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list me-2"></i>
+            Proveedores Registrados
+        </h5>
+        <span class="badge bg-primary">{{ suppliers|length if suppliers else 0 }} proveedores</span>
+    </div>
+    <div class="card-body p-0">
+        {% if suppliers %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="suppliersTable">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Contacto</th>
+                            <th>Tipo</th>
+                            <th>Estado</th>
+                            <th>Productos</th>
+                            <th>Última Compra</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for supplier in suppliers %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <strong>{{ supplier.name if supplier.name else supplier[1] }}</strong>
+                                    {% if supplier.company or (supplier|length > 2 and supplier[2]) %}
+                                        <br><small class="text-muted">{{ supplier.company or supplier[2] }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    {% if supplier.phone or (supplier|length > 3 and supplier[3]) %}
+                                        <div><i class="fas fa-phone me-1"></i>{{ supplier.phone or supplier[3] }}</div>
+                                    {% endif %}
+                                    {% if supplier.email or (supplier|length > 4 and supplier[4]) %}
+                                        <div><i class="fas fa-envelope me-1"></i>{{ supplier.email or supplier[4] }}</div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% set supplier_type = supplier.type if supplier.type else (supplier[5] if supplier|length > 5 else 'general') %}
+                                {% set type_colors = {
+                                    'food': 'success',
+                                    'beverage': 'info', 
+                                    'equipment': 'warning',
+                                    'service': 'secondary'
+                                } %}
+                                <span class="badge bg-{{ type_colors.get(supplier_type, 'secondary') }}">
+                                    {{ supplier_type|title if supplier_type else 'General' }}
+                                </span>
+                            </td>
+                            <td>
+                                {% set supplier_status = supplier.status if supplier.status else (supplier[6] if supplier|length > 6 else 'active') %}
+                                {% if supplier_status == 'active' %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>Activo
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-pause me-1"></i>Inactivo
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">
+                                    0 productos
+                                </span>
+                            </td>
+                            <td>
+                                <small class="text-muted">Nunca</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button class="btn btn-outline-primary" title="Ver detalles" onclick="alert('Función en desarrollo')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-outline-warning" title="Editar" onclick="alert('Función en desarrollo')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" title="Eliminar"
+                                            onclick="confirmDelete('{{ supplier.id if supplier.id else supplier[0] }}', '{{ supplier.name if supplier.name else supplier[1] }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-truck fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">No hay proveedores registrados</h4>
+                <p class="text-muted">Comienza agregando tu primer proveedor</p>
+                <button class="btn btn-primary" onclick="alert('Función en desarrollo')">
+                    <i class="fas fa-plus me-2"></i>Agregar Primer Proveedor
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Estadísticas Rápidas -->
+{% if suppliers %}
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-truck fa-2x text-primary mb-2"></i>
+                <h5>{{ suppliers|length }}</h5>
+                <small class="text-muted">Total Proveedores</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                <h5>{{ suppliers|length }}</h5>
+                <small class="text-muted">Activos</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-box fa-2x text-warning mb-2"></i>
+                <h5>0</h5>
+                <small class="text-muted">Productos Total</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-calendar fa-2x text-info mb-2"></i>
+                <h5>0</h5>
+                <small class="text-muted">Con Compras</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Búsqueda en tiempo real
+document.getElementById('searchSupplier').addEventListener('input', function() {
+    filterTable();
+});
+
+// Filtros
+document.getElementById('filterStatus').addEventListener('change', function() {
+    filterTable();
+});
+
+document.getElementById('filterType').addEventListener('change', function() {
+    filterTable();
+});
+
+function filterTable() {
+    const searchTerm = document.getElementById('searchSupplier').value.toLowerCase();
+    const statusFilter = document.getElementById('filterStatus').value;
+    const typeFilter = document.getElementById('filterType').value;
+    
+    const table = document.getElementById('suppliersTable');
+    if (!table) return;
+    
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let row of rows) {
+        const name = row.cells[0].textContent.toLowerCase();
+        const contact = row.cells[1].textContent.toLowerCase();
+        const type = row.cells[2].textContent.toLowerCase();
+        const status = row.cells[3].textContent.toLowerCase();
+        
+        let showRow = true;
+        
+        // Filtro de búsqueda
+        if (searchTerm && !name.includes(searchTerm) && !contact.includes(searchTerm)) {
+            showRow = false;
+        }
+        
+        // Filtro de estado
+        if (statusFilter && !status.includes(statusFilter)) {
+            showRow = false;
+        }
+        
+        // Filtro de tipo
+        if (typeFilter && !type.includes(typeFilter)) {
+            showRow = false;
+        }
+        
+        row.style.display = showRow ? '' : 'none';
+    }
+}
+
+// Confirmación de eliminación
+function confirmDelete(supplierId, supplierName) {
+    alert('Función de eliminación en desarrollo');
+}
+
+// Auto-refresh cada 2 minutos
+setInterval(function() {
+    location.reload();
+}, 120000);
+</script>
+{% endblock %}

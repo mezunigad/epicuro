@@ -2,92 +2,6 @@
 
 {% block title %}Nueva Comanda - Epicuro{% endblock %}
 
-{% block extra_css %}
-<style>
-    .product-card {
-        cursor: pointer;
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
-        height: 100%;
-    }
-    
-    .product-card:hover {
-        transform: scale(1.05);
-        border-color: var(--primary-color);
-        box-shadow: 0 8px 25px rgba(231, 76, 60, 0.2);
-    }
-    
-    .category-tab {
-        margin-right: 10px;
-        margin-bottom: 10px;
-        border-radius: 25px;
-        padding: 10px 20px;
-        transition: all 0.3s ease;
-    }
-    
-    .cart-item {
-        background: white;
-        border-radius: 10px;
-        padding: 15px;
-        margin-bottom: 10px;
-        border: 1px solid #dee2e6;
-        transition: all 0.3s ease;
-    }
-    
-    .cart-item:hover {
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    
-    .quantity-controls {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    .quantity-btn {
-        width: 35px;
-        height: 35px;
-        border-radius: 50%;
-        border: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-    }
-    
-    .cart-sidebar {
-        position: sticky;
-        top: 100px;
-        max-height: calc(100vh - 120px);
-        overflow-y: auto;
-    }
-    
-    .empty-cart {
-        text-align: center;
-        padding: 40px 20px;
-        color: #6c757d;
-    }
-    
-    .price-tag {
-        background: var(--primary-color);
-        color: white;
-        padding: 5px 10px;
-        border-radius: 15px;
-        font-weight: bold;
-        font-size: 0.9rem;
-    }
-    
-    @media (max-width: 768px) {
-        .cart-sidebar {
-            position: relative;
-            top: auto;
-            max-height: none;
-            order: -1;
-        }
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="page-header">
     <div class="container">
@@ -97,12 +11,11 @@
                     <i class="fas fa-plus-circle me-3"></i>
                     Nueva Comanda
                 </h1>
-                <p class="mb-0 mt-2 opacity-75">Selecciona productos para crear una nueva orden</p>
+                <p class="mb-0 mt-2 opacity-75">Selecciona productos y crea una nueva orden</p>
             </div>
             <div class="col-md-4 text-end">
                 <a href="{{ url_for('list_orders') }}" class="btn btn-outline-light">
-                    <i class="fas fa-list me-2"></i>
-                    Ver Comandas
+                    <i class="fas fa-list me-2"></i>Ver Órdenes
                 </a>
             </div>
         </div>
@@ -110,334 +23,685 @@
 </div>
 
 <div class="row">
-    <!-- Productos -->
-    <div class="col-lg-8">
-        <!-- Filtros de Categorías -->
-        {% if categories %}
-        <div class="card mb-4">
-            <div class="card-body">
-                <h6 class="card-title">
-                    <i class="fas fa-tags me-2"></i>Categorías
-                </h6>
-                <div class="d-flex flex-wrap">
-                    <button class="btn btn-outline-primary category-tab active" 
-                            onclick="filterByCategory('all')" 
-                            id="category-all">
-                        <i class="fas fa-th me-1"></i>Todos
-                    </button>
-                    {% for category in categories %}
-                    <button class="btn btn-outline-primary category-tab" 
-                            onclick="filterByCategory({{ category.id }})" 
-                            id="category-{{ category.id }}"
-                            style="border-color: {{ category.color }}; color: {{ category.color }};">
-                        <i class="fas fa-tag me-1"></i>{{ category.name }}
-                    </button>
-                    {% endfor %}
-                </div>
+    <!-- Panel de productos -->
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-utensils me-2"></i>Productos Disponibles
+                </h5>
             </div>
-        </div>
-        {% endif %}
+            <div class="card-body">
+                <!-- Filtro de búsqueda -->
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="searchProducts" placeholder="Buscar productos..." onkeyup="filterProducts()">
+                </div>
 
-        <!-- Grid de Productos -->
-        <div class="row" id="products-grid">
-            {% if products_by_category %}
-                {% for category_id, products in products_by_category.items() %}
-                    {% for product in products %}
-                    <div class="col-lg-4 col-md-6 mb-4 product-item" data-category="{{ category_id }}">
-                        <div class="card product-card h-100" onclick="addToCart({{ product.id }}, '{{ product.name }}', {{ product.price }})">
-                            <div class="card-body d-flex flex-column">
-                                <div class="d-flex justify-content-between align-items-start mb-3">
-                                    <h6 class="card-title mb-0 flex-grow-1">{{ product.name }}</h6>
-                                    <span class="price-tag ms-2">${{ "{:,.0f}".format(product.price) }}</span>
-                                </div>
-                                
-                                {% if product.description %}
-                                <p class="card-text text-muted small mb-3">{{ product.description }}</p>
-                                {% endif %}
-                                
-                                <div class="mt-auto">
-                                    <button class="btn btn-primary btn-sm w-100">
-                                        <i class="fas fa-plus me-1"></i>
-                                        Agregar
-                                    </button>
+                <!-- Categorías -->
+                <div class="mb-3">
+                    <div class="btn-group flex-wrap" role="group">
+                        <button type="button" class="btn btn-outline-primary active" onclick="showCategory('all')">
+                            Todos
+                        </button>
+                        {% for category in categories %}
+                        <button type="button" class="btn btn-outline-primary" onclick="showCategory({{ category.id }})" style="border-color: {{ category.color }}; color: {{ category.color }};">
+                            {{ category.name }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Productos por categoría -->
+                <div class="products-container">
+                    {% for category in categories %}
+                    <div class="category-products" id="category-{{ category.id }}">
+                        <h6 class="text-muted mb-3 category-title" style="color: {{ category.color }} !important;">
+                            <i class="fas fa-circle me-2"></i>{{ category.name }}
+                        </h6>
+                        <div class="row">
+                            {% for product in products_by_category[category.id] %}
+                            <div class="col-md-6 col-lg-4 mb-3 product-item" data-name="{{ product.name.lower() }}">
+                                <div class="product-card h-100" onclick="addProduct({{ product.id }}, '{{ product.name|safe }}', {{ product.price }})">
+                                    <div class="card h-100 shadow-sm">
+                                        {% if product.image %}
+                                        <img src="{{ product.image }}" class="card-img-top" style="height: 120px; object-fit: cover;">
+                                        {% endif %}
+                                        <div class="card-body d-flex flex-column">
+                                            <h6 class="card-title">{{ product.name }}</h6>
+                                            {% if product.description %}
+                                            <p class="card-text small text-muted flex-grow-1">{{ product.description }}</p>
+                                            {% endif %}
+                                            <div class="d-flex justify-content-between align-items-center mt-auto">
+                                                <span class="price h5 mb-0 text-success">${{ "{:,.0f}".format(product.price) }}</span>
+                                                <button type="button" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-plus"></i>
+                                                </button>
+                                            </div>
+                                            {% if not product.available %}
+                                            <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-50 text-white">
+                                                <strong>No Disponible</strong>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+                            {% endfor %}
                         </div>
                     </div>
                     {% endfor %}
-                {% endfor %}
-            {% else %}
-            <div class="col-12">
-                <div class="text-center py-5">
-                    <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
-                    <h4 class="text-muted">No hay productos disponibles</h4>
-                    <p class="text-muted">Agrega productos para comenzar a crear comandas</p>
-                    <a href="{{ url_for('new_product') }}" class="btn btn-primary">
-                        <i class="fas fa-plus me-2"></i>Agregar Productos
-                    </a>
                 </div>
             </div>
-            {% endif %}
         </div>
     </div>
 
-    <!-- Carrito -->
-    <div class="col-lg-4">
-        <div class="cart-sidebar">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-shopping-cart me-2"></i>
-                        Carrito
-                        <span class="badge bg-light text-dark ms-2" id="cart-count">0</span>
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <!-- Datos del Cliente -->
-                    <form id="order-form">
-                        <div class="mb-3">
-                            <label class="form-label">
-                                <i class="fas fa-user me-1"></i>Cliente
-                            </label>
-                            <input type="text" class="form-control" name="customer_name" placeholder="Nombre del cliente (opcional)">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">
-                                <i class="fas fa-phone me-1"></i>Teléfono
-                            </label>
-                            <input type="tel" class="form-control" name="customer_phone" placeholder="Teléfono (opcional)">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">
-                                <i class="fas fa-credit-card me-1"></i>Método de Pago
-                            </label>
-                            <select class="form-select" name="payment_method">
-                                <option value="efectivo">Efectivo</option>
-                                <option value="tarjeta">Tarjeta</option>
-                                <option value="transferencia">Transferencia</option>
-                            </select>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">
-                                <i class="fas fa-sticky-note me-1"></i>Notas
-                            </label>
-                            <textarea class="form-control" name="notes" rows="2" placeholder="Observaciones especiales..."></textarea>
-                        </div>
-                        
-                        <hr>
-                        
-                        <!-- Items del Carrito -->
-                        <div id="cart-items">
-                            <div class="empty-cart">
-                                <i class="fas fa-shopping-cart fa-3x mb-3"></i>
-                                <p>Carrito vacío</p>
-                                <small class="text-muted">Selecciona productos para agregar</small>
+    <!-- Panel de carrito -->
+    <div class="col-md-5">
+        <div class="card sticky-top">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-shopping-cart me-2"></i>
+                    Carrito <span id="cart-count" class="badge bg-primary">0</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="orderForm" method="POST" action="{{ url_for('create_order') }}">
+                    <!-- Datos del cliente -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-user me-1"></i>Cliente
+                        </label>
+                        <input type="text" class="form-control" name="customer_name" placeholder="Nombre del cliente (opcional)">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-phone me-1"></i>Teléfono
+                        </label>
+                        <input type="text" class="form-control" name="customer_phone" placeholder="Teléfono (opcional)">
+                    </div>
+                    
+                    <!-- Items del carrito -->
+                    <div class="mb-3">
+                        <label class="form-label">Productos</label>
+                        <div id="cart-items" style="max-height: 300px; overflow-y: auto;">
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                                <p>El carrito está vacío</p>
+                                <small>Selecciona productos del menú</small>
                             </div>
                         </div>
-                        
-                        <!-- Totales -->
-                        <div id="cart-totals" style="display: none;">
-                            <hr>
-                            <div class="d-flex justify-content-between mb-2">
+                    </div>
+                    
+                    <!-- Total -->
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
                                 <span>Subtotal:</span>
-                                <strong id="subtotal">$0</strong>
+                                <span id="subtotal">$0</span>
                             </div>
-                            <div class="d-flex justify-content-between mb-3">
-                                <span>Total:</span>
-                                <strong class="text-primary fs-5" id="total">$0</strong>
+                            <div class="d-flex justify-content-between">
+                                <span>Descuento:</span>
+                                <span id="discount">$0</span>
                             </div>
-                            
-                            <button type="submit" class="btn btn-success btn-lg w-100" id="create-order-btn">
-                                <i class="fas fa-check me-2"></i>
-                                Crear Comanda
-                            </button>
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between">
+                                <strong>Total:</strong>
+                                <strong id="total" class="text-success">$0</strong>
+                            </div>
                         </div>
-                        
-                        <input type="hidden" name="cart_items" id="cart_items_input">
-                    </form>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-credit-card me-1"></i>Método de Pago
+                        </label>
+                        <select class="form-select" name="payment_method">
+                            <option value="efectivo">Efectivo</option>
+                            <option value="tarjeta">Tarjeta</option>
+                            <option value="transferencia">Transferencia</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-sticky-note me-1"></i>Notas
+                        </label>
+                        <textarea class="form-control" name="notes" rows="2" placeholder="Notas adicionales (opcional)"></textarea>
+                    </div>
+                    
+                    <input type="hidden" name="cart_items" id="cart_items_input">
+                    
+                    <!-- Botones de acción -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg" id="submitBtn" disabled>
+                            <i class="fas fa-check me-2"></i>Crear Orden
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" onclick="clearCart()">
+                            <i class="fas fa-trash me-2"></i>Limpiar Carrito
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para variaciones de productos -->
+<div class="modal fade" id="variationsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-cogs me-2"></i>Personalizar Producto
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="variations-content">
+                    <!-- Las variaciones se cargarán aquí -->
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Notas especiales (opcional)</label>
+                    <textarea class="form-control" id="item-notes" rows="2" placeholder="Ej: sin cebolla, extra palta..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="d-flex justify-content-between w-100 align-items-center">
+                    <div>
+                        <strong>Precio: <span id="variation-price" class="text-success">$0</span></strong>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="confirmVariations()">
+                            <i class="fas fa-cart-plus me-1"></i>Agregar al Carrito
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Estilos adicionales -->
+<style>
+.product-card {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+}
+
+.product-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+}
+
+.cart-item {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.cart-item:hover {
+    background: #e9ecef;
+}
+
+.category-products {
+    display: none;
+}
+
+.category-products.active {
+    display: block;
+}
+
+.sticky-top {
+    top: 20px;
+}
+
+.variation-group {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    background: #f8f9fa;
+}
+
+.variation-option {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 8px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.variation-option:hover {
+    border-color: #007bff;
+    background: #f0f8ff;
+}
+
+.variation-option.selected {
+    border-color: #007bff;
+    background: #e3f2fd;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+.btn-group .btn {
+    margin-bottom: 5px;
+}
+
+@media (max-width: 768px) {
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        margin-bottom: 5px;
+        margin-right: 0;
+    }
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 let cart = [];
-let cartTotal = 0;
+let currentProduct = null;
+let variationsModal = null;
 
-// Funciones del carrito
-function addToCart(productId, productName, productPrice) {
-    // Buscar si el producto ya existe en el carrito
-    const existingItem = cart.find(item => item.id === productId);
+document.addEventListener('DOMContentLoaded', function() {
+    variationsModal = new bootstrap.Modal(document.getElementById('variationsModal'));
+    showCategory('all');
+    updateCartDisplay();
+});
+
+// Filtrar productos por texto
+function filterProducts() {
+    const searchTerm = document.getElementById('searchProducts').value.toLowerCase();
+    const productItems = document.querySelectorAll('.product-item');
     
-    if (existingItem) {
-        existingItem.quantity += 1;
-        existingItem.total = existingItem.quantity * existingItem.price;
+    productItems.forEach(item => {
+        const productName = item.dataset.name;
+        if (productName.includes(searchTerm)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+// Mostrar categoría específica
+function showCategory(categoryId) {
+    // Actualizar botones
+    document.querySelectorAll('.btn-outline-primary').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Mostrar/ocultar categorías
+    document.querySelectorAll('.category-products').forEach(div => {
+        if (categoryId === 'all') {
+            div.style.display = 'block';
+        } else if (div.id === `category-${categoryId}`) {
+            div.style.display = 'block';
+        } else {
+            div.style.display = 'none';
+        }
+    });
+    
+    // Limpiar filtro de búsqueda
+    document.getElementById('searchProducts').value = '';
+    filterProducts();
+}
+
+// Agregar producto al carrito
+function addProduct(productId, productName, productPrice) {
+    // Verificar si el producto tiene variaciones
+    fetch(`/api/product-variations/${productId}`)
+        .then(response => response.json())
+        .then(variations => {
+            if (variations.length > 0) {
+                // Mostrar modal de variaciones
+                showVariationsModal(productId, productName, productPrice, variations);
+            } else {
+                // Agregar directamente al carrito
+                addToCart(productId, productName, productPrice, [], '');
+            }
+        })
+        .catch(error => {
+            console.error('Error al cargar variaciones:', error);
+            // Si hay error, agregar sin variaciones
+            addToCart(productId, productName, productPrice, [], '');
+        });
+}
+
+// Mostrar modal de variaciones
+function showVariationsModal(productId, productName, productPrice, variations) {
+    currentProduct = { 
+        id: productId, 
+        name: productName, 
+        price: productPrice,
+        basePrice: productPrice
+    };
+    
+    document.querySelector('#variationsModal .modal-title').innerHTML = 
+        `<i class="fas fa-cogs me-2"></i>Personalizar ${productName}`;
+    
+    let variationsHtml = '';
+    
+    variations.forEach(group => {
+        variationsHtml += `
+            <div class="variation-group mb-3">
+                <h6 class="mb-3">
+                    ${group.display_name} 
+                    ${group.required ? '<span class="text-danger">*</span>' : ''}
+                </h6>
+                <div class="variation-options" data-group-id="${group.id}" data-required="${group.required}">
+        `;
+        
+        group.options.forEach((option, index) => {
+            const priceText = option.price_modifier !== 0 ? 
+                ` (${option.price_modifier > 0 ? '+' : ''}$${Math.abs(option.price_modifier).toLocaleString()})` : '';
+            
+            variationsHtml += `
+                <div class="variation-option" onclick="selectVariation(this, ${group.id}, ${option.id}, ${option.price_modifier})" 
+                     data-option-id="${option.id}" data-price="${option.price_modifier}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${option.display_name}</strong>
+                            ${priceText ? `<span class="text-muted">${priceText}</span>` : ''}
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="variation_${group.id}" 
+                                   value="${option.id}" ${index === 0 && group.required ? 'checked' : ''}>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        variationsHtml += `</div></div>`;
+    });
+    
+    document.getElementById('variations-content').innerHTML = variationsHtml;
+    document.getElementById('item-notes').value = '';
+    
+    // Pre-seleccionar primera opción de grupos requeridos
+    variations.forEach(group => {
+        if (group.required && group.options.length > 0) {
+            const firstOption = document.querySelector(`[data-group-id="${group.id}"] .variation-option`);
+            if (firstOption) {
+                selectVariation(firstOption, group.id, group.options[0].id, group.options[0].price_modifier);
+            }
+        }
+    });
+    
+    updateVariationPrice();
+    variationsModal.show();
+}
+
+// Seleccionar variación
+function selectVariation(element, groupId, optionId, priceModifier) {
+    // Limpiar selección previa del grupo
+    const group = element.closest('.variation-options');
+    group.querySelectorAll('.variation-option').forEach(opt => {
+        opt.classList.remove('selected');
+        opt.querySelector('input').checked = false;
+    });
+    
+    // Seleccionar nueva opción
+    element.classList.add('selected');
+    element.querySelector('input').checked = true;
+    
+    updateVariationPrice();
+}
+
+// Actualizar precio con variaciones
+function updateVariationPrice() {
+    let totalPrice = currentProduct.basePrice;
+    
+    document.querySelectorAll('.variation-option.selected').forEach(option => {
+        const priceModifier = parseFloat(option.dataset.price) || 0;
+        totalPrice += priceModifier;
+    });
+    
+    currentProduct.price = totalPrice;
+    document.getElementById('variation-price').textContent = `$${totalPrice.toLocaleString()}`;
+}
+
+// Confirmar variaciones y agregar al carrito
+function confirmVariations() {
+    const selectedVariations = [];
+    let isValid = true;
+    
+    // Validar que se seleccionaron todas las opciones requeridas
+    document.querySelectorAll('.variation-options[data-required="true"]').forEach(group => {
+        const selected = group.querySelector('.variation-option.selected');
+        if (!selected) {
+            isValid = false;
+            group.style.border = '2px solid #dc3545';
+            setTimeout(() => {
+                group.style.border = '';
+            }, 3000);
+        }
+    });
+    
+    if (!isValid) {
+        alert('Por favor selecciona todas las opciones requeridas (marcadas con *)');
+        return;
+    }
+    
+    // Recopilar variaciones seleccionadas
+    document.querySelectorAll('.variation-option.selected').forEach(option => {
+        const input = option.querySelector('input');
+        const groupId = input.name.replace('variation_', '');
+        const optionText = option.querySelector('strong').textContent;
+        
+        selectedVariations.push({
+            group_id: groupId,
+            option_id: option.dataset.optionId,
+            price_modifier: parseFloat(option.dataset.price) || 0,
+            name: optionText
+        });
+    });
+    
+    const notes = document.getElementById('item-notes').value.trim();
+    
+    addToCart(currentProduct.id, currentProduct.name, currentProduct.price, selectedVariations, notes);
+    variationsModal.hide();
+}
+
+// Agregar al carrito
+function addToCart(productId, productName, productPrice, variations = [], notes = '') {
+    // Crear identificador único para productos con variaciones
+    const variationKey = variations.map(v => v.option_id).sort().join('-');
+    const uniqueKey = `${productId}-${variationKey}-${notes}`;
+    
+    // Buscar si el producto con las mismas variaciones ya existe
+    const existingIndex = cart.findIndex(item => item.uniqueKey === uniqueKey);
+    
+    if (existingIndex !== -1) {
+        cart[existingIndex].quantity++;
     } else {
         cart.push({
             id: productId,
             name: productName,
             price: productPrice,
             quantity: 1,
-            total: productPrice
+            variations: variations,
+            notes: notes,
+            uniqueKey: uniqueKey
         });
     }
     
     updateCartDisplay();
+    updateCartTotal();
     
-    // Feedback visual
-    const productCard = event.currentTarget;
-    productCard.style.transform = 'scale(0.95)';
+    // Mostrar confirmación visual
+    showAddedToCartMessage(productName);
+}
+
+// Mostrar mensaje de confirmación
+function showAddedToCartMessage(productName) {
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success alert-dismissible fade show position-fixed';
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 300px;';
+    alert.innerHTML = `
+        <i class="fas fa-check-circle me-2"></i>
+        <strong>${productName}</strong> agregado al carrito
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alert);
+    
     setTimeout(() => {
-        productCard.style.transform = '';
-    }, 150);
+        if (alert.parentNode) {
+            alert.remove();
+        }
+    }, 3000);
 }
 
-function removeFromCart(productId) {
-    cart = cart.filter(item => item.id !== productId);
-    updateCartDisplay();
-}
-
-function updateQuantity(productId, newQuantity) {
-    if (newQuantity <= 0) {
-        removeFromCart(productId);
+// Actualizar visualización del carrito
+function updateCartDisplay() {
+    const cartContainer = document.getElementById('cart-items');
+    const cartCount = document.getElementById('cart-count');
+    
+    cartCount.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
+    
+    if (cart.length === 0) {
+        cartContainer.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                <p>El carrito está vacío</p>
+                <small>Selecciona productos del menú</small>
+            </div>
+        `;
+        document.getElementById('submitBtn').disabled = true;
         return;
     }
     
-    const item = cart.find(item => item.id === productId);
-    if (item) {
-        item.quantity = newQuantity;
-        item.total = item.quantity * item.price;
-        updateCartDisplay();
-    }
-}
-
-function updateCartDisplay() {
-    const cartItemsContainer = document.getElementById('cart-items');
-    const cartCount = document.getElementById('cart-count');
-    const cartTotals = document.getElementById('cart-totals');
-    const subtotalElement = document.getElementById('subtotal');
-    const totalElement = document.getElementById('total');
+    document.getElementById('submitBtn').disabled = false;
     
-    // Actualizar contador
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    cartCount.textContent = totalItems;
-    
-    if (cart.length === 0) {
-        cartItemsContainer.innerHTML = `
-            <div class="empty-cart">
-                <i class="fas fa-shopping-cart fa-3x mb-3"></i>
-                <p>Carrito vacío</p>
-                <small class="text-muted">Selecciona productos para agregar</small>
-            </div>
-        `;
-        cartTotals.style.display = 'none';
-    } else {
-        // Mostrar items
-        cartItemsContainer.innerHTML = cart.map(item => `
-            <div class="cart-item">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h6 class="mb-0">${item.name}</h6>
-                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFromCart(${item.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
+    let cartHtml = '';
+    cart.forEach((item, index) => {
+        const variationsText = item.variations.length > 0 ? 
+            `<small class="text-info d-block"><i class="fas fa-cog me-1"></i>${item.variations.map(v => v.name).join(', ')}</small>` : '';
+        
+        const notesText = item.notes ? 
+            `<small class="text-muted d-block"><i class="fas fa-sticky-note me-1"></i>${item.notes}</small>` : '';
+        
+        cartHtml += `
+            <div class="cart-item p-3 mb-2">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong class="text-dark">${item.name}</strong>
+                            <span class="text-success fw-bold">$${item.price.toLocaleString()}</span>
+                        </div>
+                        ${variationsText}
+                        ${notesText}
+                    </div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="quantity-controls">
-                        <button type="button" class="btn btn-outline-primary quantity-btn" 
-                                onclick="updateQuantity(${item.id}, ${item.quantity - 1})">
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary" onclick="updateQuantity(${index}, -1)">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <span class="fw-bold">${item.quantity}</span>
-                        <button type="button" class="btn btn-outline-primary quantity-btn" 
-                                onclick="updateQuantity(${item.id}, ${item.quantity + 1})">
+                        <button type="button" class="btn btn-outline-secondary" disabled>
+                            ${item.quantity}
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="updateQuantity(${index}, 1)">
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>
-                    <div class="text-end">
-                        <div class="small text-muted">${item.price.toLocaleString()}</div>
-                        <div class="fw-bold">${item.total.toLocaleString()}</div>
+                    <div>
+                        <span class="text-muted me-2">$${(item.price * item.quantity).toLocaleString()}</span>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${index})" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                 </div>
             </div>
-        `).join('');
-        
-        // Calcular y mostrar totales
-        cartTotal = cart.reduce((sum, item) => sum + item.total, 0);
-        subtotalElement.textContent = `${cartTotal.toLocaleString()}`;
-        totalElement.textContent = `${cartTotal.toLocaleString()}`;
-        cartTotals.style.display = 'block';
-    }
-    
-    // Actualizar input hidden
-    document.getElementById('cart_items_input').value = JSON.stringify(cart);
-}
-
-// Filtrar por categoría
-function filterByCategory(categoryId) {
-    // Actualizar botones activos
-    document.querySelectorAll('.category-tab').forEach(btn => {
-        btn.classList.remove('active');
+        `;
     });
     
-    if (categoryId === 'all') {
-        document.getElementById('category-all').classList.add('active');
-        // Mostrar todos los productos
-        document.querySelectorAll('.product-item').forEach(item => {
-            item.style.display = 'block';
-        });
-    } else {
-        document.getElementById(`category-${categoryId}`).classList.add('active');
-        // Mostrar solo productos de la categoría seleccionada
-        document.querySelectorAll('.product-item').forEach(item => {
-            if (item.dataset.category == categoryId) {
-                item.style.display = 'block';
-            } else {
-                item.style.display = 'none';
-            }
-        });
+    cartContainer.innerHTML = cartHtml;
+}
+
+// Actualizar cantidad de producto
+function updateQuantity(index, change) {
+    cart[index].quantity += change;
+    if (cart[index].quantity <= 0) {
+        cart.splice(index, 1);
+    }
+    updateCartDisplay();
+    updateCartTotal();
+}
+
+// Eliminar producto del carrito
+function removeFromCart(index) {
+    cart.splice(index, 1);
+    updateCartDisplay();
+    updateCartTotal();
+}
+
+// Actualizar total del carrito
+function updateCartTotal() {
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const discount = 0;
+    const total = subtotal - discount;
+    
+    document.getElementById('subtotal').textContent = `$${subtotal.toLocaleString()}`;
+    document.getElementById('discount').textContent = `$${discount.toLocaleString()}`;
+    document.getElementById('total').textContent = `$${total.toLocaleString()}`;
+}
+
+// Limpiar carrito
+function clearCart() {
+    if (cart.length > 0 && confirm('¿Estás seguro de que quieres limpiar el carrito?')) {
+        cart = [];
+        updateCartDisplay();
+        updateCartTotal();
     }
 }
 
-// Manejar envío del formulario
-document.getElementById('order-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
+// Enviar formulario
+document.getElementById('orderForm').addEventListener('submit', function(e) {
     if (cart.length === 0) {
-        alert('El carrito está vacío. Agrega productos antes de crear la comanda.');
+        e.preventDefault();
+        alert('Debe agregar al menos un producto al carrito');
         return;
     }
     
-    // Confirmar creación
-    if (confirm(`¿Crear comanda por ${cartTotal.toLocaleString()}?`)) {
-        this.action = '/orders/create';
-        this.method = 'POST';
-        this.submit();
-    }
+    // Preparar datos del carrito para envío
+    const cartData = cart.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        variations: item.variations,
+        notes: item.notes
+    }));
+    
+    document.getElementById('cart_items_input').value = JSON.stringify(cartData);
 });
 
 // Atajos de teclado
 document.addEventListener('keydown', function(e) {
-    // ESC para limpiar carrito
-    if (e.key === 'Escape') {
-        if (cart.length > 0 && confirm('¿Limpiar carrito?')) {
-            cart = [];
-            updateCartDisplay();
-        }
+    // ESC para cerrar modal
+    if (e.key === 'Escape' && variationsModal) {
+        variationsModal.hide();
     }
     
-    // Enter para crear orden (solo si hay items)
-    if (e.key === 'Enter' && e.ctrlKey && cart.length > 0) {
-        document.getElementById('order-form').dispatchEvent(new Event('submit'));
+    // Ctrl+Enter para enviar orden
+    if (e.ctrlKey && e.key === 'Enter' && cart.length > 0) {
+        document.getElementById('orderForm').submit();
     }
 });
 
-// Inicializar
-updateCartDisplay();
+// Auto-focus en búsqueda
+document.getElementById('searchProducts').focus();
 </script>
 {% endblock %}

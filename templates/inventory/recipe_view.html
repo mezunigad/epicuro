@@ -1,0 +1,585 @@
+{% extends "base.html" %}
+
+{% block title %}{{ recipe.name }} - Receta - Epicuro{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-utensils me-3"></i>
+                    {{ recipe.name }}
+                </h1>
+                {% if recipe.description %}
+                <p class="mb-0 mt-2 opacity-75">{{ recipe.description }}</p>
+                {% endif %}
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('edit_recipe', recipe_id=recipe.id) }}" class="btn btn-light me-2">
+                    <i class="fas fa-edit me-2"></i>Editar
+                </a>
+                <a href="{{ url_for('list_recipes') }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left me-2"></i>Volver
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Información básica de la receta -->
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Información de la Receta
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center p-3 bg-light rounded">
+                            <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                            <div class="h4 mb-0">{{ recipe.servings }}</div>
+                            <small class="text-muted">Porciones</small>
+                        </div>
+                    </div>
+                    
+                    {% if recipe.prep_time %}
+                    <div class="col-md-3">
+                        <div class="text-center p-3 bg-light rounded">
+                            <i class="fas fa-clock fa-2x text-info mb-2"></i>
+                            <div class="h4 mb-0">{{ recipe.prep_time }}</div>
+                            <small class="text-muted">min preparación</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if recipe.cook_time %}
+                    <div class="col-md-3">
+                        <div class="text-center p-3 bg-light rounded">
+                            <i class="fas fa-fire fa-2x text-warning mb-2"></i>
+                            <div class="h4 mb-0">{{ recipe.cook_time }}</div>
+                            <small class="text-muted">min cocción</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="col-md-3">
+                        <div class="text-center p-3 bg-light rounded">
+                            {% if recipe.prep_time and recipe.cook_time %}
+                                <i class="fas fa-stopwatch fa-2x text-success mb-2"></i>
+                                <div class="h4 mb-0">{{ recipe.prep_time + recipe.cook_time }}</div>
+                                <small class="text-muted">min total</small>
+                            {% elif recipe.prep_time %}
+                                <i class="fas fa-stopwatch fa-2x text-success mb-2"></i>
+                                <div class="h4 mb-0">{{ recipe.prep_time }}</div>
+                                <small class="text-muted">min total</small>
+                            {% else %}
+                                <i class="fas fa-question fa-2x text-muted mb-2"></i>
+                                <div class="h4 mb-0">-</div>
+                                <small class="text-muted">tiempo total</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <strong>Categoría:</strong>
+                        {% if recipe.category %}
+                            <span class="badge bg-info ms-2">{{ recipe.category.title() }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary ms-2">Sin categoría</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Estado:</strong>
+                        {% if recipe.active %}
+                            <span class="badge bg-success ms-2">
+                                <i class="fas fa-check me-1"></i>Activa
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary ms-2">
+                                <i class="fas fa-times me-1"></i>Inactiva
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Costos -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-dollar-sign me-2"></i>
+                    Análisis de Costos
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <div class="h2 text-success mb-0">${{ "{:,.0f}".format(recipe.cost_per_serving) }}</div>
+                    <small class="text-muted">por porción</small>
+                </div>
+                
+                <div class="text-center mb-3">
+                    <div class="h4 text-primary mb-0">${{ "{:,.0f}".format(recipe.estimated_cost) }}</div>
+                    <small class="text-muted">costo total</small>
+                </div>
+                
+                <button class="btn btn-outline-primary w-100" onclick="calculateCost()">
+                    <i class="fas fa-calculator me-2"></i>Recalcular Costos
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ingredientes -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-leaf me-2"></i>
+                    Ingredientes ({{ recipe_ingredients|length }})
+                </h5>
+                <button class="btn btn-outline-primary btn-sm" onclick="printShoppingList()">
+                    <i class="fas fa-shopping-cart me-1"></i>Lista de Compras
+                </button>
+            </div>
+            <div class="card-body p-0">
+                {% if recipe_ingredients %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Ingrediente</th>
+                                    <th>Cantidad</th>
+                                    <th>Unidad</th>
+                                    <th>Costo Unitario</th>
+                                    <th>Costo Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ing in recipe_ingredients %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ ing.ingredient_name }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold">{{ ing.quantity }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted">{{ ing.unit or ing.ingredient_unit }}</span>
+                                    </td>
+                                    <td>
+                                        {% if ing.unit_cost %}
+                                            ${{ "{:,.0f}".format(ing.unit_cost) }} / {{ ing.ingredient_unit }}
+                                        {% else %}
+                                            <span class="text-muted">No definido</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if ing.ingredient_cost %}
+                                            <strong class="text-success">${{ "{:,.0f}".format(ing.ingredient_cost) }}</strong>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-leaf fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Sin ingredientes</h5>
+                        <p class="text-muted">Esta receta no tiene ingredientes definidos</p>
+                        <a href="{{ url_for('edit_recipe', recipe_id=recipe.id) }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Agregar Ingredientes
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Instrucciones -->
+{% if recipe.instructions %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list-ol me-2"></i>
+                    Instrucciones de Preparación
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="recipe-instructions">
+                    {{ recipe.instructions|safe|nl2br }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Acciones adicionales -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-tools me-2"></i>
+                    Acciones
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-success w-100 mb-2" onclick="scaleRecipe()">
+                            <i class="fas fa-expand-arrows-alt me-2"></i>
+                            Escalar Receta
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-info w-100 mb-2" onclick="duplicateRecipe()">
+                            <i class="fas fa-copy me-2"></i>
+                            Duplicar Receta
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-warning w-100 mb-2" onclick="printRecipe()">
+                            <i class="fas fa-print me-2"></i>
+                            Imprimir Receta
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-outline-danger w-100 mb-2" onclick="deleteRecipe()">
+                            <i class="fas fa-trash me-2"></i>
+                            Eliminar Receta
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para escalar receta -->
+<div class="modal fade" id="scaleRecipeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-expand-arrows-alt me-2"></i>Escalar Receta
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Porciones actuales: <strong>{{ recipe.servings }}</strong></label>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="new-servings" class="form-label">Nuevas porciones:</label>
+                    <input type="number" class="form-control" id="new-servings" min="1" value="{{ recipe.servings }}">
+                </div>
+                
+                <div class="alert alert-info">
+                    <strong>Factor de escalado:</strong> <span id="scale-factor">1.0</span>x
+                </div>
+                
+                <div id="scaled-ingredients">
+                    <!-- Se poblará dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" onclick="applyScale()">Aplicar Escalado</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para calcular costos -->
+<div class="modal fade" id="calculateCostModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-calculator me-2"></i>Cálculo de Costos
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="cost-calculation-loading" class="text-center py-4">
+                    <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                    <p class="mt-2">Calculando costos...</p>
+                </div>
+                <div id="cost-calculation-result"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.recipe-instructions {
+    line-height: 1.8;
+    font-size: 1.1rem;
+}
+
+.recipe-instructions p {
+    margin-bottom: 1rem;
+}
+
+@media print {
+    .page-header,
+    .btn,
+    .card-header {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Función para calcular costos
+function calculateCost() {
+    const modal = new bootstrap.Modal(document.getElementById('calculateCostModal'));
+    modal.show();
+    
+    document.getElementById('cost-calculation-loading').style.display = 'block';
+    document.getElementById('cost-calculation-result').innerHTML = '';
+    
+    fetch(`/api/recipes/{{ recipe.id }}/calculate-cost`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('cost-calculation-loading').style.display = 'none';
+            
+            if (data.success) {
+                let resultHtml = `
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle me-2"></i>Cálculo Actualizado</h6>
+                        <div class="row">
+                            <div class="col-6">
+                                <strong>Costo Total:</strong><br>
+                                <span class="h4 text-success">$${data.total_cost.toLocaleString()}</span>
+                            </div>
+                            <div class="col-6">
+                                <strong>Costo por Porción:</strong><br>
+                                <span class="h4 text-primary">$${data.cost_per_serving.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                if (data.ingredients_cost.length > 0) {
+                    resultHtml += `
+                        <h6>Desglose por Ingredientes:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Ingrediente</th>
+                                        <th>Cantidad</th>
+                                        <th>Costo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    data.ingredients_cost.forEach(ingredient => {
+                        resultHtml += `
+                            <tr>
+                                <td>${ingredient.name}</td>
+                                <td>${ingredient.quantity} ${ingredient.unit}</td>
+                                <td>$${ingredient.cost.toLocaleString()}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    resultHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('cost-calculation-result').innerHTML = resultHtml;
+                
+                // Actualizar costos en la página
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+                
+            } else {
+                document.getElementById('cost-calculation-result').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Error: ${data.message || 'No se pudo calcular el costo'}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            document.getElementById('cost-calculation-loading').style.display = 'none';
+            document.getElementById('cost-calculation-result').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error de conexión: ${error.message}
+                </div>
+            `;
+        });
+}
+
+// Función para escalar receta
+function scaleRecipe() {
+    const modal = new bootstrap.Modal(document.getElementById('scaleRecipeModal'));
+    modal.show();
+    updateScalePreview();
+}
+
+function updateScalePreview() {
+    const currentServings = {{ recipe.servings }};
+    const newServings = parseInt(document.getElementById('new-servings').value) || currentServings;
+    const scaleFactor = newServings / currentServings;
+    
+    document.getElementById('scale-factor').textContent = scaleFactor.toFixed(2);
+    
+    const ingredients = [
+        {% for ing in recipe_ingredients %}
+        {
+            name: '{{ ing.ingredient_name }}',
+            quantity: {{ ing.quantity }},
+            unit: '{{ ing.unit or ing.ingredient_unit }}'
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    let scaledHtml = '<h6>Ingredientes escalados:</h6><ul class="list-group">';
+    
+    ingredients.forEach(ing => {
+        const scaledQuantity = (ing.quantity * scaleFactor).toFixed(3);
+        scaledHtml += `
+            <li class="list-group-item d-flex justify-content-between">
+                <span>${ing.name}</span>
+                <span><strong>${scaledQuantity} ${ing.unit}</strong></span>
+            </li>
+        `;
+    });
+    
+    scaledHtml += '</ul>';
+    document.getElementById('scaled-ingredients').innerHTML = scaledHtml;
+}
+
+document.getElementById('new-servings').addEventListener('input', updateScalePreview);
+
+function applyScale() {
+    alert('Funcionalidad de escalado en desarrollo. Por ahora solo puedes ver la preview.');
+}
+
+// Función para duplicar receta
+function duplicateRecipe() {
+    if (confirm('¿Duplicar esta receta? Se creará una copia que podrás modificar.')) {
+        fetch(`/api/recipes/{{ recipe.id }}/duplicate`, { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Receta duplicada exitosamente');
+                    window.location.href = `/inventory/recipes/${data.new_recipe_id}`;
+                } else {
+                    alert('Error al duplicar receta: ' + (data.message || 'Error desconocido'));
+                }
+            })
+            .catch(error => {
+                alert('Error al duplicar receta: ' + error.message);
+            });
+    }
+}
+
+// Función para imprimir
+function printRecipe() {
+    window.print();
+}
+
+function printShoppingList() {
+    const ingredients = [
+        {% for ing in recipe_ingredients %}
+        '{{ ing.quantity }} {{ ing.unit or ing.ingredient_unit }} de {{ ing.ingredient_name }}'{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    let listContent = `
+        <h2>Lista de Compras</h2>
+        <h3>{{ recipe.name }}</h3>
+        <p>Para {{ recipe.servings }} porciones</p>
+        <ul>
+    `;
+    
+    ingredients.forEach(ing => {
+        listContent += `<li>${ing}</li>`;
+    });
+    
+    listContent += '</ul>';
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Lista de Compras - {{ recipe.name }}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 40px; }
+                    h2 { color: #333; }
+                    li { margin-bottom: 5px; }
+                </style>
+            </head>
+            <body>
+                ${listContent}
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// Función para eliminar receta
+function deleteRecipe() {
+    if (confirm('¿Estás seguro de que quieres eliminar esta receta?\n\nEsta acción no se puede deshacer.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("delete_recipe", recipe_id=recipe.id) }}';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'e') {
+        e.preventDefault();
+        window.location.href = '{{ url_for("edit_recipe", recipe_id=recipe.id) }}';
+    }
+    
+    if (e.ctrlKey && e.key === 'p') {
+        e.preventDefault();
+        printRecipe();
+    }
+});
+</script>
+{% endblock %}

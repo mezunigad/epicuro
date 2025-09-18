@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Orden {{ order.order_number }} - Cocina</title>
+    <style>
+        @media print {
+            @page {
+                size: 80mm auto;
+                margin: 5mm;
+            }
+            body {
+                font-family: 'Courier New', monospace;
+                font-size: 12px;
+                line-height: 1.2;
+                margin: 0;
+                padding: 0;
+                width: 70mm;
+            }
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.2;
+            margin: 0;
+            padding: 10px;
+            width: 70mm;
+            background: white;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .restaurant-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        
+        .order-info {
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 5px;
+        }
+        
+        .order-number {
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            margin: 5px 0;
+        }
+        
+        .items {
+            margin-bottom: 10px;
+        }
+        
+        .item {
+            margin-bottom: 8px;
+            border-bottom: 1px dotted #ccc;
+            padding-bottom: 5px;
+        }
+        
+        .item-name {
+            font-weight: bold;
+            font-size: 13px;
+        }
+        
+        .item-variations {
+            font-style: italic;
+            margin-left: 5px;
+            color: #666;
+        }
+        
+        .item-quantity {
+            font-size: 16px;
+            font-weight: bold;
+            float: right;
+        }
+        
+        .item-notes {
+            margin-top: 2px;
+            font-style: italic;
+            color: #666;
+        }
+        
+        .footer {
+            border-top: 1px dashed #000;
+            padding-top: 5px;
+            text-align: center;
+            font-size: 10px;
+        }
+        
+        .status {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            margin: 10px 0;
+            padding: 5px;
+            border: 2px solid #000;
+        }
+        
+        .no-print {
+            display: block;
+        }
+        
+        @media print {
+            .no-print {
+                display: none;
+            }
+        }
+        
+        .divider {
+            text-align: center;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Botón de impresión -->
+    <div class="no-print" style="text-align: center; margin-bottom: 20px;">
+        <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            🖨️ Imprimir para Cocina
+        </button>
+        <button onclick="window.close()" style="padding: 10px 20px; font-size: 16px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">
+            Cerrar
+        </button>
+    </div>
+
+    <!-- Encabezado -->
+    <div class="header">
+        <div class="restaurant-name">EPICURO</div>
+        <div>ORDEN DE COCINA</div>
+    </div>
+
+    <!-- Información de la orden -->
+    <div class="order-info">
+        <div class="order-number">ORDEN #{{ order.order_number }}</div>
+        <div>Fecha: {{ order.created_at|dateformat('%d/%m/%Y %H:%M') }}</div>
+        {% if order.customer_name %}
+        <div>Cliente: {{ order.customer_name }}</div>
+        {% endif %}
+        {% if order.customer_phone %}
+        <div>Teléfono: {{ order.customer_phone }}</div>
+        {% endif %}
+    </div>
+
+    <!-- Estado -->
+    <div class="status">
+        {% if order.status == 'pending' %}
+        🔴 PENDIENTE
+        {% elif order.status == 'preparing' %}
+        🟡 PREPARANDO
+        {% elif order.status == 'ready' %}
+        🟢 LISTO
+        {% elif order.status == 'delivered' %}
+        ✅ ENTREGADO
+        {% else %}
+        ⚪ {{ order.status.upper() }}
+        {% endif %}
+    </div>
+
+    <div class="divider">================================</div>
+
+    <!-- Items de la orden -->
+    <div class="items">
+        {% for item in order_items %}
+        <div class="item">
+            <div>
+                <span class="item-name">{{ item.product_name }}</span>
+                <span class="item-quantity">x{{ item.quantity }}</span>
+            </div>
+            
+            {% if item.variations %}
+            <div class="item-variations">
+                🔸 {{ item.variations }}
+            </div>
+            {% endif %}
+            
+            {% if item.notes %}
+            <div class="item-notes">
+                📝 {{ item.notes }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="divider">================================</div>
+
+    <!-- Notas generales -->
+    {% if order.notes %}
+    <div style="margin-bottom: 10px;">
+        <strong>NOTAS ESPECIALES:</strong><br>
+        {{ order.notes }}
+    </div>
+    <div class="divider">- - - - - - - - - - - - - - - - -</div>
+    {% endif %}
+
+    <!-- Total -->
+    <div style="text-align: center; font-size: 14px; font-weight: bold; margin: 10px 0;">
+        TOTAL: ${{ "{:,.0f}".format(order.total_amount) }}
+    </div>
+
+    <div style="text-align: center; font-size: 14px; margin: 10px 0;">
+        Pago: {{ order.payment_method.title() }}
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="divider">================================</div>
+        <div>Impreso: {{ moment().format('DD/MM/YYYY HH:mm') if moment else 'Ahora' }}</div>
+        <div style="margin-top: 10px; font-size: 9px;">
+            🍽️ ¡Buen provecho! 🍽️
+        </div>
+    </div>
+
+    <script>
+        // Auto-imprimir cuando se abre la ventana
+        window.onload = function() {
+            // Pequeña pausa para que cargue completamente
+            setTimeout(function() {
+                // Solo auto-imprimir si viene de una nueva ventana
+                if (window.opener) {
+                    window.print();
+                }
+            }, 500);
+        };
+
+        // Cerrar ventana después de imprimir
+        window.onafterprint = function() {
+            if (window.opener) {
+                window.close();
+            }
+        };
+    </script>
+</body>
+</html>

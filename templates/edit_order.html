@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Orden {{ order.order_number }} - Epicuro{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-edit me-3"></i>
+                    Editar Orden {{ order.order_number }}
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">Modifica los productos y datos de la orden</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('view_order', order_id=order.id) }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left me-2"></i>Volver a Orden
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Panel de productos -->
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-utensils me-2"></i>Productos Disponibles
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Categorías -->
+                <div class="mb-3">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-primary active" onclick="showCategory('all')">
+                            Todos
+                        </button>
+                        {% for category in categories %}
+                        <button type="button" class="btn btn-outline-primary" onclick="showCategory({{ category.id }})" style="border-color: {{ category.color }};">
+                            {{ category.name }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Productos por categoría -->
+                {% for category in categories %}
+                <div class="category-products" id="category-{{ category.id }}">
+                    <h6 class="text-muted mb-3">{{ category.name }}</h6>
+                    <div class="row">
+                        {% for product in products_by_category[category.id] %}
+                        <div class="col-md-6 mb-3">
+                            <div class="product-card" onclick="addProduct({{ product.id }}, '{{ product.name }}', {{ product.price }})">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ product.name }}</h6>
+                                        {% if product.description %}
+                                        <p class="card-text small text-muted">{{ product.description }}</p>
+                                        {% endif %}
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="price h5 mb-0">${{ "{:,.0f}".format(product.price) }}</span>
+                                            <button class="btn btn-sm btn-primary">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de orden -->
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-shopping-cart me-2"></i>
+                    Editar Orden
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="orderForm" method="POST" action="{{ url_for('update_order', order_id=order.id) }}">
+                    <!-- Datos del cliente -->
+                    <div class="mb-3">
+                        <label class="form-label">Cliente</label>
+                        <input type="text" class="form-control" name="customer_name" 
+                               value="{{ order.customer_name or '' }}" placeholder="Nombre del cliente">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Teléfono</label>
+                        <input type="text" class="form-control" name="customer_phone" 
+                               value="{{ order.customer_phone or '' }}" placeholder="Teléfono">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Estado</label>
+                        <select class="form-select" name="status">
+                            <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pendiente</option>
+                            <option value="preparing" {% if order.status == 'preparing' %}selected{% endif %}>Preparando</option>
+                            <option value="ready" {% if order.status == 'ready' %}selected{% endif %}>Listo</option>
+                            <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Entregado</option>
+                            <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelado</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Items del carrito -->
+                    <div class="mb-3">
+                        <label class="form-label">Productos</label>
+                        <div id="cart-items">
+                            <!-- Los items se cargarán aquí -->
+                        </div>
+                    </div>
+                    
+                    <!-- Total -->
+                    <div class="card bg-light mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <span>Subtotal:</span>
+                                <span id="subtotal">$0</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Descuento:</span>
+                                <span id="discount">$0</span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between">
+                                <strong>Total:</strong>
+                                <strong id="total">$0</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Método de Pago</label>
+                        <select class="form-select" name="payment_method">
+                            <option value="efectivo" {% if order.payment_method == 'efectivo' %}selected{% endif %}>Efectivo</option>
+                            <option value="tarjeta" {% if order.payment_method == 'tarjeta' %}selected{% endif %}>Tarjeta</option>
+                            <option value="transferencia" {% if order.payment_method == 'transferencia' %}selected{% endif %}>Transferencia</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notas</label>
+                        <textarea class="form-control" name="notes" rows="2" placeholder="Notas adicionales">{{ order.notes or '' }}</textarea>
+                    </div>
+                    
+                    <input type="hidden" name="cart_items" id="cart_items_input">
+                    
+                    <!-- Botones -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Actualizar Orden
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="deleteOrder()">
+                            <i class="fas fa-trash me-2"></i>Eliminar Orden
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para variaciones de productos -->
+<div class="modal fade" id="variationsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Personalizar Producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="variations-content">
+                    <!-- Las variaciones se cargarán aquí -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="confirmVariations()">Agregar al Carrito</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let cart = [];
+let currentProduct = null;
+
+// Cargar items existentes de la orden
+document.addEventListener('DOMContentLoaded', function() {
+    // Cargar items existentes
+    {% for item in order_items %}
+    cart.push({
+        id: {{ item.product_id }},
+        name: '{{ item.product_name }}',
+        price: {{ item.unit_price }},
+        quantity: {{ item.quantity }},
+        variations: '{{ item.variations or "" }}',
+        notes: '{{ item.notes or "" }}'
+    });
+    {% endfor %}
+    
+    updateCartDisplay();
+    updateTotal();
+});
+
+function showCategory(categoryId) {
+    // Actualizar botones
+    document.querySelectorAll('.btn-outline-primary').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // Mostrar/ocultar categorías
+    document.querySelectorAll('.category-products').forEach(div => {
+        if (categoryId === 'all' || div.id === `category-${categoryId}`) {
+            div.style.display = 'block';
+        } else {
+            div.style.display = 'none';
+        }
+    });
+}
+
+function addProduct(productId, productName, productPrice) {
+    // Verificar si el producto tiene variaciones
+    fetch(`/api/product-variations/${productId}`)
+        .then(response => response.json())
+        .then(variations => {
+            if (variations.length > 0) {
+                // Mostrar modal de variaciones
+                showVariationsModal(productId, productName, productPrice, variations);
+            } else {
+                // Agregar directamente al carrito
+                addToCart(productId, productName, productPrice, []);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            addToCart(productId, productName, productPrice, []);
+        });
+}
+
+function showVariationsModal(productId, productName, productPrice, variations) {
+    currentProduct = { id: productId, name: productName, price: productPrice };
+    
+    document.querySelector('#variationsModal .modal-title').textContent = `Personalizar ${productName}`;
+    
+    let variationsHtml = '';
+    variations.forEach(group => {
+        variationsHtml += `
+            <div class="mb-3">
+                <label class="form-label">${group.display_name} ${group.required ? '*' : ''}</label>
+                <div class="variation-group" data-group-id="${group.id}" data-required="${group.required}">
+        `;
+        
+        group.options.forEach(option => {
+            const priceText = option.price_modifier !== 0 ? 
+                ` (${option.price_modifier > 0 ? '+' : ''}$${option.price_modifier})` : '';
+            
+            variationsHtml += `
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="variation_${group.id}" 
+                           value="${option.id}" data-price="${option.price_modifier}">
+                    <label class="form-check-label">
+                        ${option.display_name}${priceText}
+                    </label>
+                </div>
+            `;
+        });
+        
+        variationsHtml += `</div></div>`;
+    });
+    
+    document.getElementById('variations-content').innerHTML = variationsHtml;
+    
+    new bootstrap.Modal(document.getElementById('variationsModal')).show();
+}
+
+function confirmVariations() {
+    const selectedVariations = [];
+    let priceModifier = 0;
+    
+    document.querySelectorAll('.variation-group').forEach(group => {
+        const required = group.dataset.required === 'true';
+        const selected = group.querySelector('input[type="radio"]:checked');
+        
+        if (required && !selected) {
+            alert('Por favor selecciona todas las opciones requeridas');
+            return;
+        }
+        
+        if (selected) {
+            selectedVariations.push({
+                option_id: selected.value,
+                price_modifier: parseFloat(selected.dataset.price),
+                name: selected.nextElementSibling.textContent.trim()
+            });
+            priceModifier += parseFloat(selected.dataset.price);
+        }
+    });
+    
+    const finalPrice = currentProduct.price + priceModifier;
+    addToCart(currentProduct.id, currentProduct.name, finalPrice, selectedVariations);
+    
+    bootstrap.Modal.getInstance(document.getElementById('variationsModal')).hide();
+}
+
+function addToCart(productId, productName, productPrice, variations) {
+    const existingIndex = cart.findIndex(item => 
+        item.id === productId && 
+        JSON.stringify(item.variations) === JSON.stringify(variations)
+    );
+    
+    if (existingIndex !== -1) {
+        cart[existingIndex].quantity++;
+    } else {
+        cart.push({
+            id: productId,
+            name: productName,
+            price: productPrice,
+            quantity: 1,
+            variations: variations,
+            notes: ''
+        });
+    }
+    
+    updateCartDisplay();
+    updateTotal();
+}
+
+function updateCartDisplay() {
+    const cartContainer = document.getElementById('cart-items');
+    
+    if (cart.length === 0) {
+        cartContainer.innerHTML = '<p class="text-muted">No hay productos en el carrito</p>';
+        return;
+    }
+    
+    let cartHtml = '';
+    cart.forEach((item, index) => {
+        const variationsText = item.variations.length > 0 ? 
+            `<small class="text-muted d-block">${item.variations.map(v => v.name).join(', ')}</small>` : '';
+        
+        cartHtml += `
+            <div class="cart-item border rounded p-2 mb-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="flex-grow-1">
+                        <strong>${item.name}</strong>
+                        ${variationsText}
+                        <small class="text-success">$${item.price.toLocaleString()}</small>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="updateQuantity(${index}, -1)">-</button>
+                        <span class="mx-2">${item.quantity}</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="updateQuantity(${index}, 1)">+</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeFromCart(${index})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    cartContainer.innerHTML = cartHtml;
+}
+
+function updateQuantity(index, change) {
+    cart[index].quantity += change;
+    if (cart[index].quantity <= 0) {
+        cart.splice(index, 1);
+    }
+    updateCartDisplay();
+    updateTotal();
+}
+
+function removeFromCart(index) {
+    cart.splice(index, 1);
+    updateCartDisplay();
+    updateTotal();
+}
+
+function updateTotal() {
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const discount = 0;
+    const total = subtotal - discount;
+    
+    document.getElementById('subtotal').textContent = `$${subtotal.toLocaleString()}`;
+    document.getElementById('discount').textContent = `$${discount.toLocaleString()}`;
+    document.getElementById('total').textContent = `$${total.toLocaleString()}`;
+}
+
+// Enviar formulario
+document.getElementById('orderForm').addEventListener('submit', function(e) {
+    if (cart.length === 0) {
+        e.preventDefault();
+        alert('Debe agregar al menos un producto al carrito');
+        return;
+    }
+    
+    document.getElementById('cart_items_input').value = JSON.stringify(cart);
+});
+
+function deleteOrder() {
+    if (confirm('¿Está seguro de que desea eliminar esta orden? Esta acción no se puede deshacer.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("delete_order", order_id=order.id) }}';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Mostrar todas las categorías por defecto
+showCategory('all');
+</script>
+{% endblock %}

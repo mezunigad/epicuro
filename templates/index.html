@@ -191,8 +191,7 @@
                                     </td>
                                     <td>
                                         <small class="text-muted">
-                                            {{ order.created_at.strftime('%d/%m %H:%M') if order.created_at else 'N/A' }}
-                                        </small>
+                                            {{ order.created_at|dateformat('%d/%m %H:%M') }}                                        </small>
                                     </td>
                                     <td>
                                         <a href="{{ url_for('view_order', order_id=order.id) }}" 

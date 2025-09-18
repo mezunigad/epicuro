@@ -278,7 +278,7 @@
                                     </td>
                                     <td>
                                         <small class="text-muted">
-                                            {{ movement.created_at.strftime('%d/%m %H:%M') if movement.created_at else 'N/A' }}
+                                            {{ movement.created_at|dateformat('%d/%m %H:%M') if movement.created_at else 'N/A' }}
                                         </small>
                                     </td>
                                     <td>

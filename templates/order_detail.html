@@ -1,212 +1,155 @@
 {% extends "base.html" %}
 
-{% block title %}Comanda {{ order.order_number }} - Epicuro{% endblock %}
-
-{% block extra_css %}
-<style>
-    .receipt-view {
-        background: white;
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        max-width: 400px;
-        margin: 0 auto;
-    }
-    
-    .receipt-header {
-        text-align: center;
-        padding: 20px;
-        border-bottom: 2px dashed #dee2e6;
-    }
-    
-    .receipt-body {
-        padding: 20px;
-    }
-    
-    .receipt-footer {
-        text-align: center;
-        padding: 20px;
-        border-top: 2px dashed #dee2e6;
-        background: #f8f9fa;
-        border-radius: 0 0 15px 15px;
-    }
-    
-    .item-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px 0;
-        border-bottom: 1px solid #f1f3f4;
-    }
-    
-    .item-row:last-child {
-        border-bottom: none;
-    }
-    
-    .total-row {
-        font-size: 1.2rem;
-        font-weight: bold;
-        padding: 15px 0 10px 0;
-        border-top: 2px solid #dee2e6;
-        margin-top: 10px;
-    }
-    
-    @media print {
-        .no-print {
-            display: none !important;
-        }
-        
-        .receipt-view {
-            box-shadow: none;
-            max-width: none;
-        }
-        
-        .page-header,
-        .navbar,
-        .footer {
-            display: none !important;
-        }
-    }
-</style>
-{% endblock %}
+{% block title %}Orden {{ order.order_number }} - Epicuro{% endblock %}
 
 {% block content %}
-<div class="page-header no-print">
+<div class="page-header">
     <div class="container">
         <div class="row align-items-center">
-            <div class="col-md-8">
+            <div class="col-md-6">
                 <h1 class="mb-0">
                     <i class="fas fa-receipt me-3"></i>
-                    Comanda {{ order.order_number }}
+                    Orden {{ order.order_number }}
                 </h1>
-                <p class="mb-0 mt-2 opacity-75">Detalles de la orden</p>
+                <p class="mb-0 mt-2 opacity-75">
+                    Creada el {{ order.created_at|dateformat('%d/%m/%Y %H:%M') if order.created_at else 'N/A' }}
+                </p>
             </div>
-            <div class="col-md-4 text-end">
-                <a href="{{ url_for('list_orders') }}" class="btn btn-outline-light me-2">
+            <div class="col-md-6 text-end">
+                <a href="{{ url_for('print_order', order_id=order.id) }}" 
+                   class="btn btn-success me-2" target="_blank" title="Imprimir para cocina">
+                    <i class="fas fa-print me-2"></i>Imprimir Cocina
+                </a>
+                <a href="{{ url_for('edit_order', order_id=order.id) }}" 
+                   class="btn btn-warning me-2" title="Editar orden">
+                    <i class="fas fa-edit me-2"></i>Editar
+                </a>
+                <a href="{{ url_for('list_orders') }}" class="btn btn-outline-light">
                     <i class="fas fa-arrow-left me-2"></i>Volver
                 </a>
-                <button onclick="window.print()" class="btn btn-light">
-                    <i class="fas fa-print me-2"></i>Imprimir
-                </button>
             </div>
         </div>
     </div>
 </div>
 
 <div class="row">
-    <!-- Vista principal de la orden -->
-    <div class="col-lg-8 mb-4">
+    <!-- Información de la orden -->
+    <div class="col-md-8">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">
                     <i class="fas fa-info-circle me-2"></i>
-                    Información de la Orden
+                    Detalles de la Orden
                 </h5>
-                
-                <!-- Cambio de estado -->
-                <div class="dropdown no-print">
+                <div>
                     {% if order.status == 'pending' %}
-                        <button class="btn btn-warning dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <span class="badge bg-warning fs-6">
                             <i class="fas fa-clock me-1"></i>Pendiente
-                        </button>
+                        </span>
                     {% elif order.status == 'preparing' %}
-                        <button class="btn btn-info dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <span class="badge bg-info fs-6">
                             <i class="fas fa-utensils me-1"></i>Preparando
-                        </button>
+                        </span>
                     {% elif order.status == 'ready' %}
-                        <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-check me-1"></i>Listo
-                        </button>
-                    {% elif order.status == 'completed' %}
-                        <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-check-double me-1"></i>Completado
-                        </button>
+                        <span class="badge bg-primary fs-6">
+                            <i class="fas fa-bell me-1"></i>Listo
+                        </span>
+                    {% elif order.status == 'delivered' %}
+                        <span class="badge bg-success fs-6">
+                            <i class="fas fa-check me-1"></i>Entregado
+                        </span>
                     {% elif order.status == 'cancelled' %}
-                        <button class="btn btn-danger dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <span class="badge bg-danger fs-6">
                             <i class="fas fa-times me-1"></i>Cancelado
-                        </button>
+                        </span>
+                    {% else %}
+                        <span class="badge bg-secondary fs-6">
+                            {{ order.status.title() }}
+                        </span>
                     {% endif %}
-                    
-                    <ul class="dropdown-menu">
-                        <li><button class="dropdown-item" onclick="updateStatus('pending')">
-                            <i class="fas fa-clock me-2 text-warning"></i>Pendiente
-                        </button></li>
-                        <li><button class="dropdown-item" onclick="updateStatus('preparing')">
-                            <i class="fas fa-utensils me-2 text-info"></i>Preparando
-                        </button></li>
-                        <li><button class="dropdown-item" onclick="updateStatus('ready')">
-                            <i class="fas fa-check me-2 text-success"></i>Listo
-                        </button></li>
-                        <li><button class="dropdown-item" onclick="updateStatus('completed')">
-                            <i class="fas fa-check-double me-2 text-primary"></i>Completado
-                        </button></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><button class="dropdown-item" onclick="updateStatus('cancelled')">
-                            <i class="fas fa-times me-2 text-danger"></i>Cancelar
-                        </button></li>
-                    </ul>
                 </div>
             </div>
-            
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <h6><i class="fas fa-user me-2"></i>Cliente</h6>
-                        <p class="mb-3">
-                            {{ order.customer_name if order.customer_name else 'Sin nombre' }}<br>
-                            {% if order.customer_phone %}
-                                <small class="text-muted">
-                                    <i class="fas fa-phone me-1"></i>{{ order.customer_phone }}
-                                </small>
-                            {% endif %}
-                        </p>
+                        <div class="mb-3">
+                            <label class="text-muted small">CLIENTE</label>
+                            <div class="fw-bold">
+                                {% if order.customer_name %}
+                                    <i class="fas fa-user me-2 text-primary"></i>{{ order.customer_name }}
+                                {% else %}
+                                    <i class="fas fa-user-slash me-2 text-muted"></i>
+                                    <span class="text-muted">Cliente no especificado</span>
+                                {% endif %}
+                            </div>
+                        </div>
                         
-                        <h6><i class="fas fa-credit-card me-2"></i>Método de Pago</h6>
-                        <p class="mb-3">
-                            {% if order.payment_method == 'efectivo' %}
-                                <span class="badge bg-success">
-                                    <i class="fas fa-money-bill me-1"></i>Efectivo
-                                </span>
-                            {% elif order.payment_method == 'tarjeta' %}
-                                <span class="badge bg-primary">
-                                    <i class="fas fa-credit-card me-1"></i>Tarjeta
-                                </span>
-                            {% elif order.payment_method == 'transferencia' %}
-                                <span class="badge bg-info">
-                                    <i class="fas fa-exchange-alt me-1"></i>Transferencia
-                                </span>
-                            {% else %}
-                                <span class="badge bg-secondary">{{ order.payment_method }}</span>
-                            {% endif %}
-                        </p>
+                        {% if order.customer_phone %}
+                        <div class="mb-3">
+                            <label class="text-muted small">TELÉFONO</label>
+                            <div>
+                                <i class="fas fa-phone me-2 text-success"></i>
+                                <a href="tel:{{ order.customer_phone }}" class="text-decoration-none">
+                                    {{ order.customer_phone }}
+                                </a>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            <label class="text-muted small">MÉTODO DE PAGO</label>
+                            <div>
+                                {% if order.payment_method == 'efectivo' %}
+                                    <i class="fas fa-money-bill me-2 text-success"></i>Efectivo
+                                {% elif order.payment_method == 'tarjeta' %}
+                                    <i class="fas fa-credit-card me-2 text-primary"></i>Tarjeta
+                                {% elif order.payment_method == 'transferencia' %}
+                                    <i class="fas fa-university me-2 text-info"></i>Transferencia
+                                {% else %}
+                                    <i class="fas fa-question-circle me-2 text-muted"></i>{{ order.payment_method.title() }}
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="col-md-6">
-                        <h6><i class="fas fa-calendar me-2"></i>Fecha y Hora</h6>
-                        <p class="mb-3">
-                            {{ order.created_at.strftime('%d/%m/%Y %H:%M') if order.created_at else 'N/A' }}
-                        </p>
+                        <div class="mb-3">
+                            <label class="text-muted small">FECHA Y HORA</label>
+                            <div>
+                                <i class="fas fa-calendar me-2 text-info"></i>
+                                {{ order.created_at|dateformat('%d/%m/%Y %H:%M') if order.created_at else 'N/A' }}
+                            </div>
+                        </div>
                         
-                        {% if order.notes %}
-                        <h6><i class="fas fa-sticky-note me-2"></i>Notas</h6>
-                        <p class="mb-3">{{ order.notes }}</p>
+                        {% if order.updated_at and order.updated_at != order.created_at %}
+                        <div class="mb-3">
+                            <label class="text-muted small">ÚLTIMA ACTUALIZACIÓN</label>
+                            <div>
+                                <i class="fas fa-edit me-2 text-warning"></i>
+                                {{ order.updated_at|dateformat('%d/%m/%Y %H:%M') if order.updated_at else 'N/A' }}
+                            </div>
+                        </div>
                         {% endif %}
                         
-                        <h6><i class="fas fa-clock me-2"></i>Última Actualización</h6>
-                        <p class="mb-3">
-                            <small class="text-muted">
-                                {{ order.updated_at.strftime('%d/%m/%Y %H:%M') if order.updated_at else order.created_at.strftime('%d/%m/%Y %H:%M') if order.created_at else 'N/A' }}
-                            </small>
-                        </p>
+                        {% if order.notes %}
+                        <div class="mb-3">
+                            <label class="text-muted small">NOTAS ESPECIALES</label>
+                            <div class="alert alert-info py-2 mb-0">
+                                <i class="fas fa-sticky-note me-2"></i>
+                                {{ order.notes }}
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- Items de la orden -->
+        <!-- Productos de la orden -->
         <div class="card mt-4">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-list me-2"></i>
+                    <i class="fas fa-utensils me-2"></i>
                     Productos Ordenados
                 </h5>
             </div>
@@ -214,7 +157,7 @@
                 {% if order_items %}
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
-                            <thead>
+                            <thead class="table-light">
                                 <tr>
                                     <th>Producto</th>
                                     <th class="text-center">Cantidad</th>
@@ -227,133 +170,224 @@
                                 <tr>
                                     <td>
                                         <div>
-                                            <strong>{{ item.product_name }}</strong>
+                                            <strong class="text-dark">{{ item.product_name }}</strong>
+                                            
+                                            {% if item.variations %}
+                                            <div class="mt-1">
+                                                <small class="text-primary">
+                                                    <i class="fas fa-cogs me-1"></i>
+                                                    <strong>{{ item.variations }}</strong>
+                                                </small>
+                                            </div>
+                                            {% endif %}
+                                            
                                             {% if item.notes %}
-                                                <br><small class="text-muted">{{ item.notes }}</small>
+                                            <div class="mt-1">
+                                                <small class="text-warning">
+                                                    <i class="fas fa-sticky-note me-1"></i>
+                                                    <em>{{ item.notes }}</em>
+                                                </small>
+                                            </div>
                                             {% endif %}
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        <span class="badge bg-primary">{{ item.quantity }}</span>
+                                        <span class="badge bg-primary fs-6">{{ item.quantity }}</span>
                                     </td>
                                     <td class="text-end">
-                                        ${{ "{:,.0f}".format(item.unit_price) }}
+                                        <span class="text-muted">${{ "{:,.0f}".format(item.unit_price) }}</span>
                                     </td>
                                     <td class="text-end">
-                                        <strong>${{ "{:,.0f}".format(item.total_price) }}</strong>
+                                        <strong class="text-success">${{ "{:,.0f}".format(item.total_price) }}</strong>
                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
-                            <tfoot>
-                                <tr class="table-light">
-                                    <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
-                                    <td class="text-end"><strong>${{ "{:,.0f}".format(order.subtotal) }}</strong></td>
-                                </tr>
-                                {% if order.discount > 0 %}
-                                <tr class="table-light">
-                                    <td colspan="3" class="text-end"><strong>Descuento:</strong></td>
-                                    <td class="text-end"><strong class="text-danger">-${{ "{:,.0f}".format(order.discount) }}</strong></td>
-                                </tr>
-                                {% endif %}
-                                <tr class="table-primary">
-                                    <td colspan="3" class="text-end"><strong>TOTAL:</strong></td>
-                                    <td class="text-end"><strong class="fs-5">${{ "{:,.0f}".format(order.total_amount) }}</strong></td>
-                                </tr>
-                            </tfoot>
                         </table>
                     </div>
                 {% else %}
-                    <div class="text-center py-4">
-                        <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">No hay productos en esta orden</p>
+                    <div class="text-center py-5">
+                        <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No hay productos en esta orden</h5>
+                        <p class="text-muted">Esta orden parece estar vacía</p>
                     </div>
                 {% endif %}
             </div>
         </div>
     </div>
     
-    <!-- Vista de recibo para impresión -->
-    <div class="col-lg-4">
-        <div class="receipt-view">
-            <div class="receipt-header">
-                <h3 class="mb-1">EPICURO</h3>
-                <p class="mb-1">Sistema de Gestión</p>
-                <hr>
-                <h5>{{ order.order_number }}</h5>
-                <p class="mb-0">{{ order.created_at.strftime('%d/%m/%Y %H:%M') if order.created_at else 'N/A' }}</p>
+    <!-- Panel lateral con totales y acciones -->
+    <div class="col-md-4">
+        <!-- Resumen de totales -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-calculator me-2"></i>
+                    Resumen de Totales
+                </h5>
             </div>
-            
-            <div class="receipt-body">
-                {% if order.customer_name %}
-                <div class="mb-3">
-                    <strong>Cliente:</strong> {{ order.customer_name }}
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Subtotal:</span>
+                    <span>${{ "{:,.0f}".format(order.subtotal) }}</span>
+                </div>
+                
+                {% if order.discount > 0 %}
+                <div class="d-flex justify-content-between mb-2 text-warning">
+                    <span>Descuento:</span>
+                    <span>-${{ "{:,.0f}".format(order.discount) }}</span>
+                </div>
+                {% endif %}
+                
+                <hr>
+                
+                <div class="d-flex justify-content-between">
+                    <strong class="fs-5">Total:</strong>
+                    <strong class="fs-4 text-success">${{ "{:,.0f}".format(order.total_amount) }}</strong>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actualizar estado -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-sync-alt me-2"></i>
+                    Actualizar Estado
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('update_order_status', order_id=order.id) }}">
+                    <div class="mb-3">
+                        <label class="form-label">Estado actual:</label>
+                        <select class="form-select" name="status" onchange="this.form.submit()">
+                            <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>
+                                🔴 Pendiente
+                            </option>
+                            <option value="preparing" {% if order.status == 'preparing' %}selected{% endif %}>
+                                🟡 Preparando
+                            </option>
+                            <option value="ready" {% if order.status == 'ready' %}selected{% endif %}>
+                                🔵 Listo
+                            </option>
+                            <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>
+                                🟢 Entregado
+                            </option>
+                            <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>
+                                🔴 Cancelado
+                            </option>
+                        </select>
+                    </div>
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        El estado se actualiza automáticamente al seleccionar
+                    </small>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Acciones rápidas -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-bolt me-2"></i>
+                    Acciones Rápidas
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('print_order', order_id=order.id) }}" 
+                       class="btn btn-success" target="_blank">
+                        <i class="fas fa-print me-2"></i>Imprimir para Cocina
+                    </a>
+                    
+                    <button type="button" class="btn btn-info" onclick="duplicateOrder()">
+                        <i class="fas fa-copy me-2"></i>Duplicar Orden
+                    </button>
+                    
+                    <a href="{{ url_for('edit_order', order_id=order.id) }}" 
+                       class="btn btn-warning">
+                        <i class="fas fa-edit me-2"></i>Editar Orden
+                    </a>
+                    
                     {% if order.customer_phone %}
-                        <br><small>Tel: {{ order.customer_phone }}</small>
+                    <a href="https://wa.me/56{{ order.customer_phone.replace('+56', '').replace(' ', '').replace('-', '') }}" 
+                       class="btn btn-outline-success" target="_blank">
+                        <i class="fab fa-whatsapp me-2"></i>WhatsApp Cliente
+                    </a>
                     {% endif %}
+                    
+                    <button type="button" class="btn btn-outline-danger" onclick="deleteOrder()">
+                        <i class="fas fa-trash me-2"></i>Eliminar Orden
+                    </button>
                 </div>
-                {% endif %}
-                
-                <div class="mb-3">
-                    <strong>Estado:</strong>
-                    {% if order.status == 'pending' %}
-                        Pendiente
-                    {% elif order.status == 'preparing' %}
-                        Preparando
-                    {% elif order.status == 'ready' %}
-                        Listo
-                    {% elif order.status == 'completed' %}
-                        Completado
-                    {% elif order.status == 'cancelled' %}
-                        Cancelado
-                    {% else %}
-                        {{ order.status }}
-                    {% endif %}
-                </div>
-                
-                <hr>
-                
-                {% for item in order_items %}
-                <div class="item-row">
-                    <div>
-                        <div><strong>{{ item.product_name }}</strong></div>
-                        <small class="text-muted">{{ item.quantity }} x ${{ "{:,.0f}".format(item.unit_price) }}</small>
+            </div>
+        </div>
+        
+        <!-- Información adicional -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    Estadísticas
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <div class="fs-4 fw-bold text-primary">{{ order_items|length }}</div>
+                            <small class="text-muted">Productos</small>
+                        </div>
                     </div>
-                    <div>
-                        <strong>${{ "{:,.0f}".format(item.total_price) }}</strong>
+                    <div class="col-6">
+                        <div class="fs-4 fw-bold text-success">
+                            {{ order_items|sum(attribute='quantity') if order_items else 0 }}
+                        </div>
+                        <small class="text-muted">Items Total</small>
                     </div>
                 </div>
-                {% endfor %}
                 
-                <div class="total-row d-flex justify-content-between">
-                    <span>TOTAL:</span>
-                    <span>${{ "{:,.0f}".format(order.total_amount) }}</span>
-                </div>
-                
-                <div class="mt-3">
-                    <strong>Pago:</strong> 
-                    {% if order.payment_method == 'efectivo' %}
-                        Efectivo
-                    {% elif order.payment_method == 'tarjeta' %}
-                        Tarjeta
-                    {% elif order.payment_method == 'transferencia' %}
-                        Transferencia
-                    {% else %}
-                        {{ order.payment_method }}
-                    {% endif %}
-                </div>
-                
-                {% if order.notes %}
-                <div class="mt-3">
-                    <strong>Notas:</strong><br>
-                    <small>{{ order.notes }}</small>
+                {% if order.created_at %}
+                <div class="mt-3 pt-3 border-top">
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>
+                        Tiempo transcurrido: 
+                        <span id="elapsed-time" class="fw-bold"></span>
+                    </small>
                 </div>
                 {% endif %}
             </div>
-            
-            <div class="receipt-footer">
-                <p class="mb-1"><small>¡Gracias por su compra!</small></p>
-                <p class="mb-0"><small>www.epicuro.cl</small></p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación para eliminar -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2 text-danger"></i>
+                    Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">¿Estás seguro de que deseas eliminar la orden <strong>{{ order.order_number }}</strong>?</p>
+                <div class="alert alert-danger">
+                    <i class="fas fa-warning me-2"></i>
+                    <strong>Esta acción no se puede deshacer.</strong>
+                    Se eliminarán todos los productos y datos asociados a esta orden.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                    <i class="fas fa-trash me-2"></i>Eliminar Orden
+                </button>
             </div>
         </div>
     </div>
@@ -362,55 +396,123 @@
 
 {% block extra_js %}
 <script>
-function updateStatus(newStatus) {
-    if (confirm('¿Estás seguro de que quieres cambiar el estado de esta orden?')) {
-        // Crear formulario para enviar el cambio
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/orders/{{ order.id }}/update_status';
-        
-        const statusInput = document.createElement('input');
-        statusInput.type = 'hidden';
-        statusInput.name = 'status';
-        statusInput.value = newStatus;
-        
-        form.appendChild(statusInput);
-        document.body.appendChild(form);
-        form.submit();
+// Función para calcular tiempo transcurrido
+function updateElapsedTime() {
+    {% if order.created_at %}
+    const orderDate = new Date('{{ order.created_at }}');
+    const now = new Date();
+    const diffMs = now - orderDate;
+    
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    let timeText = '';
+    if (diffHours > 0) {
+        timeText = `${diffHours}h ${diffMinutes}m`;
+    } else {
+        timeText = `${diffMinutes}m`;
     }
+    
+    const elapsedElement = document.getElementById('elapsed-time');
+    if (elapsedElement) {
+        elapsedElement.textContent = timeText;
+        
+        // Cambiar color según el tiempo
+        if (diffHours >= 2) {
+            elapsedElement.className = 'fw-bold text-danger';
+        } else if (diffHours >= 1) {
+            elapsedElement.className = 'fw-bold text-warning';
+        } else {
+            elapsedElement.className = 'fw-bold text-success';
+        }
+    }
+    {% endif %}
+}
+
+// Función para duplicar orden
+function duplicateOrder() {
+    if (confirm('¿Crear una nueva orden con los mismos productos?')) {
+        // Redireccionar a nueva orden con parámetros de la orden actual
+        const params = new URLSearchParams({
+            duplicate: {{ order.id }},
+            customer_name: '{{ order.customer_name or "" }}',
+            customer_phone: '{{ order.customer_phone or "" }}'
+        });
+        
+        window.location.href = `{{ url_for('new_order') }}?${params.toString()}`;
+    }
+}
+
+// Función para eliminar orden
+function deleteOrder() {
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+
+function confirmDelete() {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("delete_order", order_id=order.id) }}';
+    document.body.appendChild(form);
+    form.submit();
 }
 
 // Atajos de teclado
 document.addEventListener('keydown', function(e) {
-    // Ctrl+P para imprimir
-    if (e.ctrlKey && e.key === 'p') {
-        e.preventDefault();
-        window.print();
+    // E para editar
+    if (e.key === 'e' || e.key === 'E') {
+        if (!e.ctrlKey && !e.altKey) {
+            window.location.href = '{{ url_for("edit_order", order_id=order.id) }}';
+        }
+    }
+    
+    // P para imprimir
+    if (e.key === 'p' || e.key === 'P') {
+        if (!e.ctrlKey && !e.altKey) {
+            e.preventDefault();
+            window.open('{{ url_for("print_order", order_id=order.id) }}', '_blank');
+        }
     }
     
     // ESC para volver
     if (e.key === 'Escape') {
         window.location.href = '{{ url_for("list_orders") }}';
     }
-    
-    // Números para cambiar estado rápidamente
-    if (e.key >= '1' && e.key <= '4') {
-        e.preventDefault();
-        const statuses = ['pending', 'preparing', 'ready', 'completed'];
-        const statusIndex = parseInt(e.key) - 1;
-        if (statusIndex < statuses.length) {
-            updateStatus(statuses[statusIndex]);
-        }
-    }
 });
 
-// Auto-refresh cada 30 segundos
-setInterval(function() {
-    // Solo refresh si el estado no es completado o cancelado
-    const currentStatus = '{{ order.status }}';
-    if (currentStatus !== 'completed' && currentStatus !== 'cancelled') {
+// Inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    updateElapsedTime();
+    
+    // Actualizar tiempo cada minuto
+    setInterval(updateElapsedTime, 60000);
+    
+    // Auto-refresh cada 30 segundos si la orden está en preparación
+    {% if order.status in ['pending', 'preparing'] %}
+    setInterval(function() {
         location.reload();
+    }, 30000);
+    {% endif %}
+});
+
+// Mostrar notificación de estado actualizado
+{% for message in get_flashed_messages() %}
+const alert = document.createElement('div');
+alert.className = 'alert alert-success alert-dismissible fade show position-fixed';
+alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+alert.innerHTML = `
+    <i class="fas fa-check-circle me-2"></i>
+    {{ message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+`;
+
+document.body.appendChild(alert);
+
+setTimeout(() => {
+    if (alert.parentNode) {
+        alert.remove();
     }
-}, 30000);
+}, 5000);
+{% endfor %}
 </script>
 {% endblock %}

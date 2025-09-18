@@ -94,7 +94,7 @@
                                         {% if category.created_at is string %}
                                             {{ category.created_at.split(' ')[0] }}
                                         {% else %}
-                                            {{ category.created_at.strftime('%d/%m/%Y') }}
+                                            {{ category.created_at|dateformat('%d/%m/%Y') }}
                                         {% endif %}
                                     {% else %}
                                         N/A

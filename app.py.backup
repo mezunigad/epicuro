@@ -346,15 +346,13 @@ def new_order():
         ORDER BY name
     ''').fetchall()
     
-    # Obtener productos por categoría con información de categoría
+    # Obtener productos por categoría
     products_by_category = {}
     for category in categories:
         products = db.execute('''
-            SELECT p.*, c.name as category_name
-            FROM products p
-            JOIN categories c ON p.category_id = c.id
-            WHERE p.category_id = ? AND p.available = 1 
-            ORDER BY p.name
+            SELECT * FROM products 
+            WHERE category_id = ? AND available = 1 
+            ORDER BY name
         ''', (category['id'],)).fetchall()
         products_by_category[category['id']] = products
     

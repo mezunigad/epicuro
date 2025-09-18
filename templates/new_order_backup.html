@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+
+{% block title %}Nueva Comanda - Epicuro{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+        height: 100%;
+    }
+    
+    .product-card:hover {
+        transform: scale(1.05);
+        border-color: var(--primary-color);
+        box-shadow: 0 8px 25px rgba(231, 76, 60, 0.2);
+    }
+    
+    .category-tab {
+        margin-right: 10px;
+        margin-bottom: 10px;
+        border-radius: 25px;
+        padding: 10px 20px;
+        transition: all 0.3s ease;
+    }
+    
+    .cart-item {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+        border: 1px solid #dee2e6;
+        transition: all 0.3s ease;
+    }
+    
+    .cart-item:hover {
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .quantity-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .quantity-btn {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+    
+    .cart-sidebar {
+        position: sticky;
+        top: 100px;
+        max-height: calc(100vh - 120px);
+        overflow-y: auto;
+    }
+    
+    .empty-cart {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6c757d;
+    }
+    
+    .price-tag {
+        background: var(--primary-color);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    
+    @media (max-width: 768px) {
+        .cart-sidebar {
+            position: relative;
+            top: auto;
+            max-height: none;
+            order: -1;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-plus-circle me-3"></i>
+                    Nueva Comanda
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">Selecciona productos para crear una nueva orden</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('list_orders') }}" class="btn btn-outline-light">
+                    <i class="fas fa-list me-2"></i>
+                    Ver Comandas
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Productos -->
+    <div class="col-lg-8">
+        <!-- Filtros de Categorías -->
+        {% if categories %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="fas fa-tags me-2"></i>Categorías
+                </h6>
+                <div class="d-flex flex-wrap">
+                    <button class="btn btn-outline-primary category-tab active" 
+                            onclick="filterByCategory('all')" 
+                            id="category-all">
+                        <i class="fas fa-th me-1"></i>Todos
+                    </button>
+                    {% for category in categories %}
+                    <button class="btn btn-outline-primary category-tab" 
+                            onclick="filterByCategory({{ category.id }})" 
+                            id="category-{{ category.id }}"
+                            style="border-color: {{ category.color }}; color: {{ category.color }};">
+                        <i class="fas fa-tag me-1"></i>{{ category.name }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Grid de Productos -->
+        <div class="row" id="products-grid">
+            {% if products_by_category %}
+                {% for category_id, products in products_by_category.items() %}
+                    {% for product in products %}
+                    <div class="col-lg-4 col-md-6 mb-4 product-item" data-category="{{ category_id }}">
+                        <div class="card product-card h-100" onclick="addToCart({{ product.id }}, '{{ product.name }}', {{ product.price }})">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h6 class="card-title mb-0 flex-grow-1">{{ product.name }}</h6>
+                                    <span class="price-tag ms-2">${{ "{:,.0f}".format(product.price) }}</span>
+                                </div>
+                                
+                                {% if product.description %}
+                                <p class="card-text text-muted small mb-3">{{ product.description }}</p>
+                                {% endif %}
+                                
+                                <div class="mt-auto">
+                                    <button class="btn btn-primary btn-sm w-100">
+                                        <i class="fas fa-plus me-1"></i>
+                                        Agregar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endfor %}
+            {% else %}
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">No hay productos disponibles</h4>
+                    <p class="text-muted">Agrega productos para comenzar a crear comandas</p>
+                    <a href="{{ url_for('new_product') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Agregar Productos
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Carrito -->
+    <div class="col-lg-4">
+        <div class="cart-sidebar">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-shopping-cart me-2"></i>
+                        Carrito
+                        <span class="badge bg-light text-dark ms-2" id="cart-count">0</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Datos del Cliente -->
+                    <form id="order-form">
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-user me-1"></i>Cliente
+                            </label>
+                            <input type="text" class="form-control" name="customer_name" placeholder="Nombre del cliente (opcional)">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-phone me-1"></i>Teléfono
+                            </label>
+                            <input type="tel" class="form-control" name="customer_phone" placeholder="Teléfono (opcional)">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-credit-card me-1"></i>Método de Pago
+                            </label>
+                            <select class="form-select" name="payment_method">
+                                <option value="efectivo">Efectivo</option>
+                                <option value="tarjeta">Tarjeta</option>
+                                <option value="transferencia">Transferencia</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-sticky-note me-1"></i>Notas
+                            </label>
+                            <textarea class="form-control" name="notes" rows="2" placeholder="Observaciones especiales..."></textarea>
+                        </div>
+                        
+                        <hr>
+                        
+                        <!-- Items del Carrito -->
+                        <div id="cart-items">
+                            <div class="empty-cart">
+                                <i class="fas fa-shopping-cart fa-3x mb-3"></i>
+                                <p>Carrito vacío</p>
+                                <small class="text-muted">Selecciona productos para agregar</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Totales -->
+                        <div id="cart-totals" style="display: none;">
+                            <hr>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Subtotal:</span>
+                                <strong id="subtotal">$0</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Total:</span>
+                                <strong class="text-primary fs-5" id="total">$0</strong>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-success btn-lg w-100" id="create-order-btn">
+                                <i class="fas fa-check me-2"></i>
+                                Crear Comanda
+                            </button>
+                        </div>
+                        
+                        <input type="hidden" name="cart_items" id="cart_items_input">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let cart = [];
+let cartTotal = 0;
+
+// Funciones del carrito
+function addToCart(productId, productName, productPrice) {
+    // Buscar si el producto ya existe en el carrito
+    const existingItem = cart.find(item => item.id === productId);
+    
+    if (existingItem) {
+        existingItem.quantity += 1;
+        existingItem.total = existingItem.quantity * existingItem.price;
+    } else {
+        cart.push({
+            id: productId,
+            name: productName,
+            price: productPrice,
+            quantity: 1,
+            total: productPrice
+        });
+    }
+    
+    updateCartDisplay();
+    
+    // Feedback visual
+    const productCard = event.currentTarget;
+    productCard.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+        productCard.style.transform = '';
+    }, 150);
+}
+
+function removeFromCart(productId) {
+    cart = cart.filter(item => item.id !== productId);
+    updateCartDisplay();
+}
+
+function updateQuantity(productId, newQuantity) {
+    if (newQuantity <= 0) {
+        removeFromCart(productId);
+        return;
+    }
+    
+    const item = cart.find(item => item.id === productId);
+    if (item) {
+        item.quantity = newQuantity;
+        item.total = item.quantity * item.price;
+        updateCartDisplay();
+    }
+}
+
+function updateCartDisplay() {
+    const cartItemsContainer = document.getElementById('cart-items');
+    const cartCount = document.getElementById('cart-count');
+    const cartTotals = document.getElementById('cart-totals');
+    const subtotalElement = document.getElementById('subtotal');
+    const totalElement = document.getElementById('total');
+    
+    // Actualizar contador
+    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+    cartCount.textContent = totalItems;
+    
+    if (cart.length === 0) {
+        cartItemsContainer.innerHTML = `
+            <div class="empty-cart">
+                <i class="fas fa-shopping-cart fa-3x mb-3"></i>
+                <p>Carrito vacío</p>
+                <small class="text-muted">Selecciona productos para agregar</small>
+            </div>
+        `;
+        cartTotals.style.display = 'none';
+    } else {
+        // Mostrar items
+        cartItemsContainer.innerHTML = cart.map(item => `
+            <div class="cart-item">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="mb-0">${item.name}</h6>
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeFromCart(${item.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="quantity-controls">
+                        <button type="button" class="btn btn-outline-primary quantity-btn" 
+                                onclick="updateQuantity(${item.id}, ${item.quantity - 1})">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <span class="fw-bold">${item.quantity}</span>
+                        <button type="button" class="btn btn-outline-primary quantity-btn" 
+                                onclick="updateQuantity(${item.id}, ${item.quantity + 1})">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <div class="text-end">
+                        <div class="small text-muted">${item.price.toLocaleString()}</div>
+                        <div class="fw-bold">${item.total.toLocaleString()}</div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        // Calcular y mostrar totales
+        cartTotal = cart.reduce((sum, item) => sum + item.total, 0);
+        subtotalElement.textContent = `${cartTotal.toLocaleString()}`;
+        totalElement.textContent = `${cartTotal.toLocaleString()}`;
+        cartTotals.style.display = 'block';
+    }
+    
+    // Actualizar input hidden
+    document.getElementById('cart_items_input').value = JSON.stringify(cart);
+}
+
+// Filtrar por categoría
+function filterByCategory(categoryId) {
+    // Actualizar botones activos
+    document.querySelectorAll('.category-tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    if (categoryId === 'all') {
+        document.getElementById('category-all').classList.add('active');
+        // Mostrar todos los productos
+        document.querySelectorAll('.product-item').forEach(item => {
+            item.style.display = 'block';
+        });
+    } else {
+        document.getElementById(`category-${categoryId}`).classList.add('active');
+        // Mostrar solo productos de la categoría seleccionada
+        document.querySelectorAll('.product-item').forEach(item => {
+            if (item.dataset.category == categoryId) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+}
+
+// Manejar envío del formulario
+document.getElementById('order-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (cart.length === 0) {
+        alert('El carrito está vacío. Agrega productos antes de crear la comanda.');
+        return;
+    }
+    
+    // Confirmar creación
+    if (confirm(`¿Crear comanda por ${cartTotal.toLocaleString()}?`)) {
+        this.action = '/orders/create';
+        this.method = 'POST';
+        this.submit();
+    }
+});
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    // ESC para limpiar carrito
+    if (e.key === 'Escape') {
+        if (cart.length > 0 && confirm('¿Limpiar carrito?')) {
+            cart = [];
+            updateCartDisplay();
+        }
+    }
+    
+    // Enter para crear orden (solo si hay items)
+    if (e.key === 'Enter' && e.ctrlKey && cart.length > 0) {
+        document.getElementById('order-form').dispatchEvent(new Event('submit'));
+    }
+});
+
+// Inicializar
+updateCartDisplay();
+</script>
+
+{% endblock %}
