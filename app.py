@@ -1,11 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, g, jsonify, flash, render_template_string
+from flask import Flask, render_template, request, redirect, url_for, g, jsonify, flash
 import sqlite3
 import datetime
 import os
 import json
 from decimal import Decimal
 #from zoneinfo import ZoneInfo  # Para Python 3.9+
-#from pytz import timezone
+from pytz import timezone
 
 # Si tienes Python < 3.9, usa: from pytz import timezone
 
@@ -14,20 +14,19 @@ app.secret_key = 'epicuro_secret_key_2024'
 
 # Configurar zona horaria de Chile
 #CHILE_TZ = ZoneInfo("America/Santiago")  # Para Python 3.9+
-#CHILE_TZ = timezone('America/Santiago') # Para Python < 3.9 usar: 
+CHILE_TZ = timezone('America/Santiago') # Para Python < 3.9 usar: 
 
-# Reemplazar las funciones con versiones simples:
 def get_chile_now():
-    """Obtener fecha/hora actual del sistema"""
-    return datetime.datetime.now()
+    """Obtener fecha/hora actual en zona horaria de Chile"""
+    return datetime.datetime.now(CHILE_TZ)
 
 def get_chile_today():
-    """Obtener fecha actual del sistema"""
-    return datetime.date.today()
+    """Obtener fecha actual en Chile"""
+    return get_chile_now().date()
 
 def get_chile_timestamp():
-    """Obtener timestamp en formato SQLite del sistema"""
-    return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    """Obtener timestamp en formato SQLite para Chile"""
+    return get_chile_now().strftime('%Y-%m-%d %H:%M:%S')
 
 @app.template_filter('dateformat')
 def dateformat(value, format='%d/%m/%Y'):
@@ -45,12 +44,23 @@ def dateformat(value, format='%d/%m/%Y'):
                 # Formato normal: 2025-09-16 10:30:00
                 dt = datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
             
+            # Si la fecha viene de SQLite (sin zona horaria), convertir a Chile
+            if dt.tzinfo is None:
+                # Asumir que es UTC y convertir a Chile
+                dt = dt.replace(tzinfo=datetime.timezone.utc)
+                dt = dt.astimezone(CHILE_TZ)
+            
             return dt.strftime(format)
         except:
             # Si falla la conversión, devolver solo la fecha (primeros 10 caracteres)
             return value[:10] if len(value) >= 10 else value
     else:
-        # Si ya es datetime, formatear directamente
+        # Si ya es datetime, convertir a zona horaria de Chile si es necesario
+        if hasattr(value, 'tzinfo'):
+            if value.tzinfo is None:
+                # Sin zona horaria, asumir UTC
+                value = value.replace(tzinfo=datetime.timezone.utc)
+            value = value.astimezone(CHILE_TZ)
         return value.strftime(format)
 
 @app.template_filter('nl2br')
@@ -417,7 +427,6 @@ def new_order():
                          categories=categories, 
                          products_by_category=products_by_category)
 
-
 @app.route('/orders/create', methods=['POST'])
 def create_order():
     """Crear nueva orden con variaciones y notas"""
@@ -500,42 +509,9 @@ def create_order():
         # Confirmar todas las transacciones
         db.commit()
         
-        # Mensaje de éxito
+        # Mensaje de éxito y redirección
         flash(f'Orden {order_number} creada exitosamente', 'success')
-        
-        # NUEVA LÍNEA: Generar URL para ticket de cocina con auto-impresión
-        kitchen_url = url_for('print_kitchen_ticket', order_id=order_id) + '?print=auto'
-        order_url = url_for('view_order', order_id=order_id)
-        
-        # Redireccionar con JavaScript para abrir ticket de cocina automáticamente
-        return render_template_string('''
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Orden Creada</title>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
-        .message { font-size: 18px; margin-bottom: 20px; }
-        .loading { font-size: 14px; color: #666; }
-    </style>
-</head>
-<body>
-    <div class="message">Orden creada exitosamente</div>
-    <div class="loading">Abriendo ticket de cocina...</div>
-    
-    <script>
-        // Abrir ticket de cocina en nueva ventana
-        window.open('{{ kitchen_url }}', 'kitchen', 
-                   'width=450,height=700,scrollbars=yes,resizable=yes');
-        
-        // Redireccionar después de un breve delay
-        setTimeout(function() {
-            window.location.href = '{{ order_url }}';
-        }, 1500);
-    </script>
-</body>
-</html>
-        ''', kitchen_url=kitchen_url, order_url=order_url)
+        return redirect(url_for('view_order', order_id=order_id))
         
     except json.JSONDecodeError as e:
         # Error específico al decodificar el JSON del carrito
@@ -599,45 +575,18 @@ def view_order(order_id):
 @app.route('/orders/<int:order_id>/update_status', methods=['POST'])
 def update_order_status(order_id):
     """Actualizar estado de una orden"""
-    try:
-        db = get_db()
-        new_status = request.form.get('status')
-        
-        # Verificar que la orden existe
-        order = db.execute('SELECT id FROM orders WHERE id = ?', (order_id,)).fetchone()
-        if not order:
-            if request.headers.get('Content-Type') == 'application/x-www-form-urlencoded':
-                return jsonify({'success': False, 'message': 'Orden no encontrada'}), 404
-            else:
-                flash('Orden no encontrada', 'error')
-                return redirect(url_for('list_orders'))
-        
-        # Actualizar estado
-        db.execute('''
-            UPDATE orders 
-            SET status = ?, updated_at = ?
-            WHERE id = ?
-        ''', (new_status, get_chile_timestamp(), order_id))
-        db.commit()
-        
-        # Si es petición AJAX, devolver JSON
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', ''):
-            return jsonify({
-                'success': True, 
-                'message': 'Estado actualizado correctamente',
-                'new_status': new_status
-            })
-        
-        # Si es petición normal, redireccionar (comportamiento anterior)
-        flash('Estado actualizado correctamente', 'success')
-        return redirect(url_for('view_order', order_id=order_id))
-        
-    except Exception as e:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': False, 'message': str(e)}), 500
-        else:
-            flash(f'Error al actualizar estado: {str(e)}', 'error')
-            return redirect(url_for('list_orders'))
+    db = get_db()
+    new_status = request.form.get('status')
+    
+    db.execute('''
+        UPDATE orders 
+        SET status = ?, updated_at = ?
+        WHERE id = ?
+    ''', (new_status, get_chile_timestamp(), order_id))
+    db.commit()
+    
+    flash('Estado actualizado correctamente', 'success')
+    return redirect(url_for('view_order', order_id=order_id))
 
 # Agregar estas rutas después de tus rutas existentes de órdenes en app.py
 
@@ -1080,87 +1029,67 @@ def api_categories():
 
 @app.route('/reports')
 def reports():
-    """Página de reportes con filtros de fecha"""
+    """Página de reportes"""
     db = get_db()
     
-    # Obtener parámetros de fecha del formulario
-    start_date_str = request.args.get('start_date')
-    end_date_str = request.args.get('end_date')
-    
-    # Fechas por defecto (últimos 7 días)
+    # Estadísticas para los últimos 7 días usando fechas locales
     today = get_chile_today()
     week_ago = today - datetime.timedelta(days=7)
     
-    # Usar fechas del formulario si están presentes
-    if start_date_str:
-        try:
-            start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
-        except ValueError:
-            start_date = week_ago
-    else:
-        start_date = week_ago
-    
-    if end_date_str:
-        try:
-            end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
-        except ValueError:
-            end_date = today
-    else:
-        end_date = today
-    
-    # Calcular estadísticas con las fechas filtradas
+    # Ventas reales de los últimos 7 días
     stats = {
         'today_sales': db.execute(
             'SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE DATE(created_at) = ?',
             (today,)
         ).fetchone()[0],
         'week_sales': db.execute(
-            'SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?',
-            (start_date, end_date)
+            'SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE DATE(created_at) >= ?',
+            (week_ago,)
         ).fetchone()[0],
         'month_sales': db.execute(
-            'SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?',
-            (start_date, end_date)
+            'SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE DATE(created_at) >= ?',
+            (today - datetime.timedelta(days=30),)
         ).fetchone()[0],
         'total_orders': db.execute(
-            'SELECT COUNT(*) FROM orders WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?',
-            (start_date, end_date)
+            'SELECT COUNT(*) FROM orders WHERE DATE(created_at) >= ?',
+            (week_ago,)
         ).fetchone()[0]
     }
     
-    # Productos más vendidos en el período filtrado
+    # Productos más vendidos (últimos 7 días)
     top_products_raw = db.execute('''
         SELECT oi.product_name, SUM(oi.quantity) as total_quantity, SUM(oi.total_price) as total_revenue
         FROM order_items oi
         JOIN orders o ON oi.order_id = o.id
-        WHERE DATE(o.created_at) >= ? AND DATE(o.created_at) <= ?
+        WHERE DATE(o.created_at) >= ?
         GROUP BY oi.product_name
         ORDER BY total_quantity DESC
         LIMIT 10
-    ''', (start_date, end_date)).fetchall()
+    ''', (week_ago,)).fetchall()
 
+    # Convertir a diccionarios y manejar caso sin datos
     top_products = [dict(row) for row in top_products_raw] if top_products_raw else []
     
-    # Ventas por categoría en el período filtrado
+    # Ventas por categoría (últimos 7 días)
     category_sales = db.execute('''
         SELECT c.name as category_name, c.color, COALESCE(SUM(oi.total_price), 0) as total_sales
         FROM categories c
         LEFT JOIN products p ON c.id = p.category_id
         LEFT JOIN order_items oi ON p.id = oi.product_id
-        LEFT JOIN orders o ON oi.order_id = o.id AND DATE(o.created_at) >= ? AND DATE(o.created_at) <= ?
+        LEFT JOIN orders o ON oi.order_id = o.id AND DATE(o.created_at) >= ?
         WHERE c.active = 1
         GROUP BY c.id, c.name, c.color
         ORDER BY total_sales DESC
-    ''', (start_date, end_date)).fetchall()
+    ''', (week_ago,)).fetchall()
     
-    # Ventas por hora en el período filtrado
+    # Ventas por hora (últimos 7 días)
     hourly_sales = db.execute('''
         SELECT strftime('%H', created_at) as hour, COUNT(*) as order_count
         FROM orders 
-        WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?
+        WHERE DATE(created_at) >= ?
         GROUP BY strftime('%H', created_at)
         ORDER BY hour
-    ''', (start_date, end_date)).fetchall()
+    ''', (week_ago,)).fetchall()
     
     return render_template('reports.html', 
                          stats=stats, 
@@ -1168,61 +1097,6 @@ def reports():
                          category_sales=[dict(row) for row in category_sales],
                          hourly_sales=[dict(row) for row in hourly_sales])
 
-@app.route('/reports/export/excel')
-def export_reports_excel():
-    """Exportar reportes a Excel"""
-    import io
-    from flask import make_response
-    
-    try:
-        # Obtener parámetros de fecha
-        start_date_str = request.args.get('start_date', '')
-        end_date_str = request.args.get('end_date', '')
-        
-        # Fechas por defecto si no hay parámetros
-        today = get_chile_today()
-        week_ago = today - datetime.timedelta(days=7)
-        
-        start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else week_ago
-        end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else today
-        
-        # Obtener datos (reutilizar lógica de reports())
-        db = get_db()
-        
-        # Órdenes del período
-        orders = db.execute('''
-            SELECT o.*, oi.product_name, oi.quantity, oi.unit_price, oi.total_price
-            FROM orders o
-            JOIN order_items oi ON o.id = oi.order_id
-            WHERE DATE(o.created_at) >= ? AND DATE(o.created_at) <= ?
-            ORDER BY o.created_at DESC
-        ''', (start_date, end_date)).fetchall()
-        
-        # Crear contenido CSV (más simple que Excel)
-        output = io.StringIO()
-        
-        # Encabezados
-        output.write("Fecha,Numero_Orden,Cliente,Telefono,Producto,Cantidad,Precio_Unitario,Total_Producto,Total_Orden,Estado,Metodo_Pago\n")
-        
-        # Datos
-        for order in orders:
-            # Formatear fecha
-            fecha = order['created_at'][:10] if order['created_at'] else ''
-            
-            # Escribir línea
-            line = f"{fecha},{order['order_number']},{order['customer_name'] or ''},{order['customer_phone'] or ''},{order['product_name']},{order['quantity']},{order['unit_price']},{order['total_price']},{order['total_amount']},{order['status']},{order['payment_method']}\n"
-            output.write(line)
-        
-        # Crear respuesta
-        response = make_response(output.getvalue())
-        response.headers['Content-Type'] = 'text/csv; charset=utf-8'
-        response.headers['Content-Disposition'] = f'attachment; filename=reporte_ventas_{start_date}_a_{end_date}.csv'
-        
-        return response
-        
-    except Exception as e:
-        flash(f'Error al generar reporte: {str(e)}', 'error')
-        return redirect(url_for('reports'))
 # ===== RUTAS DEL SISTEMA DE INVENTARIO =====
 
 # ===== GESTIÓN DE INGREDIENTES =====
@@ -1417,7 +1291,19 @@ def create_supplier():
     except Exception as e:
         flash(f'Error al crear proveedor: {str(e)}', 'error')
         return redirect(url_for('new_supplier'))
+
+@app.route('/inventory/suppliers/<int:supplier_id>/edit')
+def edit_supplier(supplier_id):
+    """Formulario para editar proveedor"""
+    db = get_db()
     
+    supplier = db.execute('SELECT * FROM suppliers WHERE id = ?', (supplier_id,)).fetchone()
+    if not supplier:
+        flash('Proveedor no encontrado', 'error')
+        return redirect(url_for('list_suppliers'))
+    
+    return render_template('inventory/supplier_form.html', supplier=supplier)
+
 @app.route('/inventory/suppliers/<int:supplier_id>/update', methods=['POST'])
 def update_supplier(supplier_id):
     """Actualizar proveedor"""
@@ -1445,7 +1331,6 @@ def update_supplier(supplier_id):
     except Exception as e:
         flash(f'Error al actualizar proveedor: {str(e)}', 'error')
         return redirect(url_for('edit_supplier', supplier_id=supplier_id))
-       
 
 # ============================================================================
 # GESTIÓN DE RECETAS - RUTAS ACTUALIZADAS PARA SQLITE
@@ -1850,14 +1735,10 @@ def list_purchases():
 @app.route('/inventory/purchases/new')
 def new_purchase():
     """Formulario para nueva compra"""
-    try:
-        db = get_db()
-        suppliers = db.execute('SELECT * FROM suppliers ORDER BY name').fetchall()
-        ingredients = db.execute('SELECT * FROM ingredients ORDER BY name').fetchall()
-        return render_template('inventory/purchase_form.html', suppliers=suppliers, ingredients=ingredients)
-    except Exception as e:
-        print(f"Error en new_purchase: {e}")
-        return f"Error: {e}"
+    db = get_db()
+    suppliers = db.execute('SELECT * FROM suppliers WHERE active = 1 ORDER BY name').fetchall()
+    ingredients = db.execute('SELECT * FROM ingredients WHERE active = 1 ORDER BY name').fetchall()
+    return render_template('inventory/purchase_form.html', suppliers=suppliers, ingredients=ingredients)
 
 @app.route('/inventory/purchases/create', methods=['POST'])
 def create_purchase():
@@ -1937,7 +1818,7 @@ def view_purchase(purchase_id):
         ORDER BY i.name
     ''', (purchase_id,)).fetchall()
     
-    return render_template('inventory/purchase_view.html', purchase=purchase, purchase_items=items)
+    return render_template('inventory/purchase_detail.html', purchase=purchase, items=items)
 
 @app.route('/inventory/purchases/<int:purchase_id>/receive', methods=['POST'])
 def receive_purchase(purchase_id):
@@ -1996,158 +1877,6 @@ def receive_purchase(purchase_id):
         flash(f'Error al recibir compra: {str(e)}', 'error')
     
     return redirect(url_for('view_purchase', purchase_id=purchase_id))
-
-@app.route('/inventory/purchases/<int:purchase_id>/edit')
-def edit_purchase(purchase_id):
-    """Editar compra existente"""
-    db = get_db()
-    
-    purchase = db.execute('SELECT * FROM purchases WHERE id = ? AND status = "pending"', (purchase_id,)).fetchone()
-    if not purchase:
-        flash('Compra no encontrada o no se puede editar', 'error')
-        return redirect(url_for('list_purchases'))
-    
-    # Obtener items de la compra
-    purchase_items = db.execute('''
-        SELECT pi.*, i.name as ingredient_name, i.unit as ingredient_unit
-        FROM purchase_items pi
-        JOIN ingredients i ON pi.ingredient_id = i.id
-        WHERE pi.purchase_id = ?
-    ''', (purchase_id,)).fetchall()
-    
-    # Obtener proveedores e ingredientes
-    suppliers = db.execute('SELECT * FROM suppliers WHERE active = 1 ORDER BY name').fetchall()
-    ingredients = db.execute('SELECT * FROM ingredients WHERE active = 1 ORDER BY name').fetchall()
-    
-    return render_template('inventory/purchase_form.html',
-                         purchase=purchase,
-                         purchase_items=purchase_items,
-                         suppliers=suppliers,
-                         ingredients=ingredients)
-
-@app.route('/inventory/purchases/<int:purchase_id>/update', methods=['POST'])
-def update_purchase(purchase_id):
-    """Actualizar compra existente"""
-    try:
-        db = get_db()
-        
-        # Verificar que la compra existe y es editable
-        purchase = db.execute('SELECT * FROM purchases WHERE id = ? AND status = "pending"', (purchase_id,)).fetchone()
-        if not purchase:
-            flash('Compra no encontrada o no se puede editar', 'error')
-            return redirect(url_for('list_purchases'))
-        
-        # Obtener datos del formulario (similar a create_purchase)
-        supplier_id = request.form.get('supplier_id')
-        purchase_date = request.form.get('purchase_date')
-        expected_date = request.form.get('expected_date') or None
-        notes = request.form.get('notes', '')
-        
-        # Calcular nuevo total
-        ingredient_ids = request.form.getlist('ingredient_id[]')
-        quantities = request.form.getlist('quantity[]')
-        unit_prices = request.form.getlist('unit_price[]')
-        
-        total_amount = sum(
-            float(q) * float(p) for q, p in zip(quantities, unit_prices)
-            if q and p
-        )
-        
-        cursor = db.cursor()
-        
-        # Actualizar compra principal
-        cursor.execute('''
-            UPDATE purchases SET
-                supplier_id = ?, purchase_date = ?, expected_date = ?, 
-                total_amount = ?, notes = ?, updated_at = ?
-            WHERE id = ?
-        ''', (supplier_id, purchase_date, expected_date, total_amount, notes, get_chile_timestamp(), purchase_id))
-        
-        # Eliminar items existentes y crear nuevos
-        cursor.execute('DELETE FROM purchase_items WHERE purchase_id = ?', (purchase_id,))
-        
-        # Agregar nuevos items
-        for i, ingredient_id in enumerate(ingredient_ids):
-            if ingredient_id and quantities[i] and unit_prices[i]:
-                quantity = float(quantities[i])
-                unit_price = float(unit_prices[i])
-                total_price = quantity * unit_price
-                
-                cursor.execute('''
-                    INSERT INTO purchase_items (purchase_id, ingredient_id, quantity, unit, unit_price, total_price)
-                    VALUES (?, ?, ?, 'kg', ?, ?)
-                ''', (purchase_id, ingredient_id, quantity, unit_price, total_price))
-        
-        db.commit()
-        flash('Compra actualizada exitosamente', 'success')
-        return redirect(url_for('view_purchase', purchase_id=purchase_id))
-        
-    except Exception as e:
-        flash(f'Error al actualizar compra: {str(e)}', 'error')
-        return redirect(url_for('edit_purchase', purchase_id=purchase_id))
-
-@app.route('/inventory/purchases/<int:purchase_id>/delete', methods=['POST'])
-def delete_purchase(purchase_id):
-    """Eliminar compra"""
-    try:
-        db = get_db()
-        cursor = db.cursor()
-        
-        # Verificar si la compra fue recibida para revertir stock
-        purchase = db.execute('SELECT status FROM purchases WHERE id = ?', (purchase_id,)).fetchone()
-        
-        if purchase and purchase['status'] == 'received':
-            # Revertir stock si la compra fue recibida
-            items = db.execute('SELECT * FROM purchase_items WHERE purchase_id = ?', (purchase_id,)).fetchall()
-            for item in items:
-                cursor.execute('UPDATE ingredients SET current_stock = current_stock - ? WHERE id = ?', 
-                             (item['quantity'], item['ingredient_id']))
-        
-        # Eliminar items y compra
-        cursor.execute('DELETE FROM purchase_items WHERE purchase_id = ?', (purchase_id,))
-        cursor.execute('DELETE FROM purchases WHERE id = ?', (purchase_id,))
-        
-        db.commit()
-        flash('Compra eliminada exitosamente', 'success')
-        
-    except Exception as e:
-        flash(f'Error al eliminar compra: {str(e)}', 'error')
-    
-    return redirect(url_for('list_purchases'))
-
-@app.route('/inventory/suppliers/<int:supplier_id>')
-def view_supplier(supplier_id):
-    """Ver detalles de proveedor"""
-    db = get_db()
-    supplier = db.execute('SELECT * FROM suppliers WHERE id = ?', (supplier_id,)).fetchone()
-    if not supplier:
-        flash('Proveedor no encontrado', 'error')
-        return redirect(url_for('list_suppliers'))
-    return render_template('inventory/supplier_detail.html', supplier=supplier)
-
-@app.route('/inventory/suppliers/<int:supplier_id>/edit')
-def edit_supplier(supplier_id):
-    """Editar proveedor"""
-    db = get_db()
-
-    supplier = db.execute('SELECT * FROM suppliers WHERE id = ?', (supplier_id,)).fetchone()
-    if not supplier:
-        flash('Proveedor no encontrado', 'error')
-        return redirect(url_for('list_suppliers'))
-    
-    return render_template('inventory/supplier_form.html', supplier=supplier)
-
-@app.route('/inventory/suppliers/<int:supplier_id>/delete', methods=['POST'])
-def delete_supplier(supplier_id):
-    """Eliminar proveedor"""
-    try:
-        db = get_db()
-        db.execute('DELETE FROM suppliers WHERE id = ?', (supplier_id,))
-        db.commit()
-        flash('Proveedor eliminado exitosamente', 'success')
-    except Exception as e:
-        flash(f'Error al eliminar proveedor: {str(e)}', 'error')
-    return redirect(url_for('list_suppliers'))
 
 # ===== CONSUMO DE RECETAS =====
 
@@ -2317,7 +2046,7 @@ def inventory_reports():
         'suppliers_count': db.execute('SELECT COUNT(*) FROM suppliers WHERE active = 1').fetchone()[0]
     }
     
-    return render_template('reports.html', 
+    return render_template('inventory/reports.html', 
                          stats=stats, 
                          low_stock=low_stock,
                          recent_movements=recent_movements,
@@ -2668,7 +2397,7 @@ def print_kitchen_ticket(order_id):
 
 @app.route('/customer-bill/<int:order_id>')
 def print_customer_bill(order_id):
-    """Imprimir cuenta para cliente y marcar como completada"""
+    """Imprimir cuenta para cliente"""
     from datetime import datetime
     
     db = get_db()
@@ -2679,19 +2408,8 @@ def print_customer_bill(order_id):
         flash('Orden no encontrada', 'error')
         return redirect(url_for('list_orders'))
     
-    # NUEVO: Marcar orden como completada al imprimir cuenta
-    if order['status'] != 'completed':
-        db.execute('''
-            UPDATE orders 
-            SET status = 'completed', updated_at = ?
-            WHERE id = ?
-        ''', (get_chile_timestamp(), order_id))
-        db.commit()
-    
     # Convertir Row a dict para poder modificar
     order = dict(order)
-    # Asegurar que el estado actualizado se refleje en el template
-    order['status'] = 'completed'
     
     # Convertir created_at de string a datetime si es necesario
     if order.get('created_at'):
@@ -2775,7 +2493,7 @@ def print_customer_bill(order_id):
     tip_suggested = subtotal * 0.10  # 10% propina sugerida
     total_with_tip = subtotal + tip_suggested
     
-    # Agregar tiempo actual
+    # AGREGAR ESTAS LÍNEAS:
     current_time = get_chile_now()
     
     return render_template('customer_bill.html',
@@ -2784,7 +2502,7 @@ def print_customer_bill(order_id):
                          subtotal=subtotal,
                          tip_suggested=tip_suggested,
                          total_with_tip=total_with_tip,
-                         current_time=current_time)
+                         current_time=current_time)  # ← LÍNEA AGREGADA
 
 @app.route('/api/products/save-variations', methods=['POST'])
 def api_save_product_variations():
@@ -3120,135 +2838,6 @@ def new_variation_option(group_id):
     flash('Funcionalidad en desarrollo', 'info')
     return redirect(url_for('view_variation_group', group_id=group_id))        
 
-
-#=======TEST
-@app.route('/debug/integrity-check')
-def debug_integrity_check():
-    """Verificar integridad completa del sistema"""
-    db = get_db()
-    results = []
-    
-    try:
-        # Test 1: Conexión DB
-        results.append(("✅ Conexión DB", "OK"))
-        
-        # Test 2: Verificar tablas principales
-        tables = ['orders', 'order_items', 'products', 'categories']
-        for table in tables:
-            count = db.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0]
-            results.append((f"✅ Tabla {table}", f"{count} registros"))
-        
-        # Test 3: Verificar funciones de tiempo
-        now = get_chile_now()
-        today = get_chile_today()
-        timestamp = get_chile_timestamp()
-        results.append(("✅ Funciones tiempo", f"Now: {now}, Today: {today}"))
-        
-        # Test 4: Verificar órdenes recientes
-        recent_orders = db.execute('''
-            SELECT COUNT(*) FROM orders 
-            WHERE DATE(created_at) >= DATE('now', '-7 days')
-        ''').fetchone()[0]
-        results.append(("✅ Órdenes (7 días)", f"{recent_orders} órdenes"))
-        
-        # Test 5: Verificar estados
-        statuses = db.execute('''
-            SELECT status, COUNT(*) as count 
-            FROM orders 
-            GROUP BY status
-        ''').fetchall()
-        status_summary = ", ".join([f"{s['status']}: {s['count']}" for s in statuses])
-        results.append(("✅ Estados órdenes", status_summary))
-        
-        # Test 6: Verificar integridad productos-items
-        orphan_items = db.execute('''
-            SELECT COUNT(*) FROM order_items oi
-            LEFT JOIN products p ON oi.product_id = p.id
-            WHERE p.id IS NULL
-        ''').fetchone()[0]
-        results.append(("⚠️ Items huérfanos" if orphan_items > 0 else "✅ Items-Productos", f"{orphan_items} items sin producto"))
-        
-        # Test 7: Test rutas críticas
-        critical_routes = [
-            '/orders', '/products', '/categories', '/reports'
-        ]
-        results.append(("✅ Rutas críticas", f"{len(critical_routes)} rutas definidas"))
-        
-    except Exception as e:
-        results.append(("❌ Error en tests", str(e)))
-    
-    # Generar reporte HTML
-    report_html = f"""
-    <html>
-    <head>
-        <title>Test de Integridad - Epicuro</title>
-        <style>
-            body {{ font-family: monospace; margin: 20px; }}
-            .test-ok {{ color: green; }}
-            .test-warning {{ color: orange; }}
-            .test-error {{ color: red; }}
-            table {{ border-collapse: collapse; width: 100%; }}
-            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-            th {{ background-color: #f2f2f2; }}
-        </style>
-    </head>
-    <body>
-        <h1>🔍 Test de Integridad del Sistema</h1>
-        <p><strong>Ejecutado:</strong> {get_chile_timestamp()}</p>
-        
-        <h2>Resultados:</h2>
-        <table>
-            <tr><th>Test</th><th>Resultado</th></tr>
-            {''.join([f'<tr><td>{test}</td><td>{result}</td></tr>' for test, result in results])}
-        </table>
-        
-        <h2>Acciones Rápidas:</h2>
-        <a href="/debug/test-order/1" style="padding: 10px; background: #007bff; color: white; text-decoration: none; margin: 5px; display: inline-block;">
-            🧪 Test Orden #1
-        </a>
-        <a href="/orders" style="padding: 10px; background: #28a745; color: white; text-decoration: none; margin: 5px; display: inline-block;">
-            📋 Ver Órdenes
-        </a>
-        <a href="/reports" style="padding: 10px; background: #ffc107; color: black; text-decoration: none; margin: 5px; display: inline-block;">
-            📊 Ver Reportes
-        </a>
-        
-        <h2>Estado del Sistema:</h2>
-        <pre id="system-status">Cargando...</pre>
-        
-        <script>
-            document.getElementById('system-status').innerHTML = `
-Hora del servidor: {get_chile_now()}
-Timestamp: {get_chile_timestamp()}
-Total tests: {len(results)}
-Tests OK: {len([r for r in results if '✅' in r[0]])}
-Warnings: {len([r for r in results if '⚠️' in r[0]])}
-Errores: {len([r for r in results if '❌' in r[0]])}
-            `;
-        </script>
-    </body>
-    </html>
-    """
-    
-    return report_html
-
-@app.route('/debug')
-def debug_tools():
-    """Panel de herramientas de debug"""
-    db = get_db()
-    
-    # Obtener estadísticas del sistema
-    stats = {
-        'current_time': get_chile_timestamp(),
-        'db_status': 'Conectada',
-        'total_orders': db.execute('SELECT COUNT(*) FROM orders').fetchone()[0],
-        'orders_today': db.execute(
-            'SELECT COUNT(*) FROM orders WHERE DATE(created_at) = DATE(?)', 
-            (get_chile_today(),)
-        ).fetchone()[0]
-    }
-    
-    return render_template('debug.html', **stats)
 # ===== INICIALIZACIÓN =====
 
 if __name__ == '__main__':
