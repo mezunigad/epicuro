@@ -21,8 +21,8 @@ COPY . .
 # Crear directorio para la base de datos si no existe
 RUN mkdir -p data
 
-# Exponer el puerto que usa Flask (por defecto 5000)
-EXPOSE 5000
+# Exponer el puerto que usa Flask (5002 en tu caso)
+EXPOSE 5002
 
 # Variables de entorno para Flask
 ENV FLASK_APP=app.py
