@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backups
+*.backup
+backup_*.csv
+
+# Reports
+*.xlsx
+
+# Tests
+tests/
+
+# Otros archivos no necesarios
+*.sh
+README.md
