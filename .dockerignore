@@ -1,4 +1,4 @@
-# Git
+﻿# Git
 .git
 .gitignore
 
@@ -10,8 +10,6 @@ __pycache__
 .Python
 venv/
 .venv/
-pip-log.txt
-pip-delete-this-directory.txt
 
 # IDE
 .vscode/
@@ -31,7 +29,3 @@ backup_*.csv
 
 # Tests
 tests/
-
-# Otros archivos no necesarios
-*.sh
-README.md
