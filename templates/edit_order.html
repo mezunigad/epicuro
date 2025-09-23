@@ -146,6 +146,9 @@
                             <option value="efectivo" {% if order.payment_method == 'efectivo' %}selected{% endif %}>Efectivo</option>
                             <option value="tarjeta" {% if order.payment_method == 'tarjeta' %}selected{% endif %}>Tarjeta</option>
                             <option value="transferencia" {% if order.payment_method == 'transferencia' %}selected{% endif %}>Transferencia</option>
+                            <option value="edenred" {% if order.payment_method == 'edenred' %}selected{% endif %}>Edenred</option>
+                            <option value="amipass" {% if order.payment_method == 'amipass' %}selected{% endif %}>Amipass</option>
+                            <option value="pluxee" {% if order.payment_method == 'pluxee' %}selected{% endif %}>Pluxee</option>
                         </select>
                     </div>
                     

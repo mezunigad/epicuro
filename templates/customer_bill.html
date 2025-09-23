@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuenta - {{ order.order_number }}</title>
+    <style>
+        @page {
+            size: 80mm auto;
+            margin: 0;
+            page-break-inside: avoid;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            page-break-inside: avoid;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 9pt;
+            font-weight: bold;
+            line-height: 1.0;
+            width: 80mm;
+            margin: 0;
+            padding: 1mm;
+            background: white;
+            color: black;
+            overflow-x: hidden;
+            -webkit-font-smoothing: none;
+            page-break-inside: avoid;
+        }
+        
+        .ticket {
+            width: 78mm;
+            page-break-inside: avoid;
+        }
+        
+        /* Encabezado compacto */
+        .header {
+            text-align: center;
+            margin-bottom: 1mm;
+            page-break-inside: avoid;
+        }
+        
+        .logo {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 0.5mm;
+        }
+        
+        .address {
+            font-size: 8pt;
+            margin-bottom: 0.5mm;
+        }
+        
+        .phone {
+            font-size: 8pt;
+            margin-bottom: 1mm;
+        }
+        
+        .ticket-type {
+            font-size: 10pt;
+            font-weight: bold;
+            border: 1px solid black;
+            padding: 1mm;
+            margin: 1mm 0;
+        }
+        
+        /* Líneas más delgadas */
+        .line {
+            width: 100%;
+            border-top: 1px solid black;
+            margin: 1mm 0;
+        }
+        
+        .dashed {
+            width: 100%;
+            border-top: 1px dashed black;
+            margin: 0.5mm 0;
+        }
+        
+        /* Info compacta */
+        .order-info {
+            font-size: 8pt;
+            margin-bottom: 1mm;
+            page-break-inside: avoid;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5mm;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            width: 45%;
+        }
+        
+        .info-value {
+            width: 55%;
+            text-align: right;
+            font-weight: bold;
+        }
+        
+        /* Productos compactos */
+        .products {
+            margin: 1mm 0;
+            page-break-inside: avoid;
+        }
+        
+        .products-header {
+            text-align: center;
+            font-weight: bold;
+            font-size: 9pt;
+            margin-bottom: 1mm;
+            border: 1px solid black;
+            padding: 1mm;
+        }
+        
+        .product {
+            margin-bottom: 1mm;
+            font-size: 8pt;
+            page-break-inside: avoid;
+        }
+        
+        .product-name {
+            font-weight: bold;
+            margin-bottom: 0.5mm;
+            font-size: 8pt;
+        }
+        
+        .product-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .qty {
+            width: 20%;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .unit-price {
+            width: 35%;
+            text-align: center;
+        }
+        
+        .total-price {
+            width: 35%;
+            text-align: right;
+            font-weight: bold;
+        }
+        
+        .product-separator {
+            border-bottom: 1px dotted black;
+            margin-top: 0.5mm;
+        }
+        
+        /* Totales compactos */
+        .totals {
+            margin-top: 1mm;
+            border-top: 1px solid black;
+            padding-top: 1mm;
+            page-break-inside: avoid;
+        }
+        
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5mm;
+            font-size: 8pt;
+        }
+        
+        .total-label {
+            font-weight: bold;
+            width: 60%;
+        }
+        
+        .total-amount {
+            font-weight: bold;
+            width: 40%;
+            text-align: right;
+        }
+        
+        .final-total {
+            font-size: 10pt;
+            border: 1px solid black;
+            padding: 1mm;
+            margin-top: 1mm;
+        }
+        
+        /* Propina compacta */
+        .tip-section {
+            border: 1px solid black;
+            padding: 1mm;
+            margin: 1mm 0;
+            text-align: center;
+            font-size: 7pt;
+            page-break-inside: avoid;
+        }
+        
+        .tip-title {
+            font-weight: bold;
+            margin-bottom: 0.5mm;
+        }
+        
+        .tip-amount {
+            font-size: 9pt;
+            font-weight: bold;
+            margin: 0.5mm 0;
+        }
+        
+        /* Pago compacto */
+        .payment {
+            margin: 1mm 0;
+            page-break-inside: avoid;
+        }
+        
+        .payment-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 8pt;
+            font-weight: bold;
+            padding: 1mm;
+            border: 1px solid black;
+        }
+        
+        /* Footer compacto */
+        .footer {
+            text-align: center;
+            font-size: 7pt;
+            margin-top: 1mm;
+            border-top: 1px dashed black;
+            padding-top: 1mm;
+            page-break-inside: avoid;
+        }
+        
+        .thank-you {
+            font-weight: bold;
+            font-size: 8pt;
+            margin: 1mm 0;
+        }
+        
+        .legal {
+            margin: 0.5mm 0;
+        }
+        
+        .timestamp {
+            margin-top: 1mm;
+            font-size: 7pt;
+            border-top: 1px dotted black;
+            padding-top: 0.5mm;
+        }
+
+        /* Botón de impresión manual (visible solo en pantalla) */
+        .print-button {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 9999;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .print-button:hover {
+            background: #0056b3;
+        }
+        
+        /* Print optimizado para continuidad */
+        @media print {
+            body {
+                margin: 0;
+                padding: 0.5mm;
+                width: 80mm;
+                height: auto;
+                page-break-inside: avoid;
+            }
+            
+            .ticket {
+                width: 79mm;
+                page-break-inside: avoid;
+            }
+            
+            .no-print, .print-button {
+                display: none !important;
+            }
+            
+            /* Forzar impresión continua */
+            * {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+            
+            /* Eliminar saltos de página */
+            .header, .order-info, .products, .totals, .tip-section, .payment, .footer {
+                page-break-before: avoid !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+            }
+        }
+        
+        /* Clase para elementos críticos */
+        .no-break {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+    </style>
+</head>
+<body>
+    <!-- Botón de impresión manual -->
+    <button class="print-button no-print" onclick="window.print()">
+        Imprimir
+    </button>
+
+    <div class="ticket no-break">
+        <!-- Header -->
+        <div class="header no-break">
+            <div class="logo">EPICURO</div>
+            <div class="address">Av. Errázuriz 847, Santa Cruz</div>
+            <div class="phone">Tel: +56 9 1234 5678</div>
+            <div class="ticket-type">CUENTA</div>
+        </div>
+        
+        <div class="line"></div>
+        
+        <!-- Order Info -->
+        <div class="order-info no-break">
+            <div class="info-row">
+                <div class="info-label">Orden:</div>
+                <div class="info-value">{{ order.order_number or order.id }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Fecha:</div>
+                <div class="info-value">{{ order.created_at|dateformat('%d/%m/%Y') }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Hora:</div>
+                <div class="info-value">{{ order.created_at|dateformat('%H:%M') }}</div>
+            </div>
+            {% if order.customer_name %}
+            <div class="info-row">
+                <div class="info-label">Cliente:</div>
+                <div class="info-value">{{ order.customer_name[:20] }}</div>
+            </div>
+            {% endif %}
+            <div class="info-row">
+                <div class="info-label">Tipo:</div>
+                <div class="info-value">{% if order.order_type == 'takeaway' %}Llevar{% else %}Local{% endif %}</div>
+            </div>
+        </div>
+        
+        <div class="dashed"></div>
+        
+        <!-- Products -->
+        <div class="products no-break">
+            <div class="products-header">PRODUCTOS</div>
+            
+            {% for item in order_items %}
+            <div class="product no-break">
+                <div class="product-name">{{ item.product_name[:30] }}</div>
+                <div class="product-details">
+                    <div class="qty">{{ item.quantity }}x</div>
+                    <div class="unit-price">${{ "{:,.0f}".format(item.unit_price) }}</div>
+                    <div class="total-price">${{ "{:,.0f}".format(item.total_price) }}</div>
+                </div>
+                <div class="product-separator"></div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Totals -->
+        <div class="totals no-break">
+            <div class="total-row">
+                <div class="total-label">Subtotal:</div>
+                <div class="total-amount">${{ "{:,.0f}".format(subtotal) }}</div>
+            </div>
+            
+            {% if order.discount and order.discount > 0 %}
+            <div class="total-row">
+                <div class="total-label">Descuento:</div>
+                <div class="total-amount">-${{ "{:,.0f}".format(order.discount) }}</div>
+            </div>
+            {% endif %}
+            
+            <div class="total-row final-total">
+                <div class="total-label">TOTAL:</div>
+                <div class="total-amount">${{ "{:,.0f}".format(order.total_amount) }}</div>
+            </div>
+        </div>
+        
+        <!-- Tip -->
+        <div class="tip-section no-break">
+            <div class="tip-title">Propina Sugerida (10%)</div>
+            <div class="tip-amount">${{ "{:,.0f}".format(tip_suggested) }}</div>
+            <div>Total + propina: ${{ "{:,.0f}".format(total_with_tip) }}</div>
+        </div>
+        
+        <div class="dashed"></div>
+        
+        <!-- Payment -->
+        <div class="payment no-break">
+            <div class="payment-row">
+                <div>Pago:</div>
+                <div>{{ order.payment_method.title() if order.payment_method else 'Efectivo' }}</div>
+            </div>
+        </div>
+        
+        <div class="dashed"></div>
+        
+        <!-- Footer -->
+        <div class="footer no-break">
+            <div class="thank-you">¡Gracias por su preferencia!</div>
+            <div class="thank-you">Esperamos verle pronto</div>
+            
+            <div class="dashed"></div>
+            
+            <div class="legal">RUT: 78.123.456-7</div>
+            <div class="legal">Giro: Restaurante</div>
+            <div class="legal">No válido como boleta</div>
+            
+            <div class="timestamp">{{ current_time.strftime('%d/%m/%Y %H:%M') }}</div>
+        </div>
+    </div>
+    
+    <script>
+        // Variables para controlar la impresión
+        let printExecuted = false;
+        let pageLoaded = false;
+
+        // Función de impresión automática
+        function autoPrint() {
+            if (printExecuted) return;
+            
+            try {
+                printExecuted = true;
+                console.log('Ejecutando impresión automática...');
+                window.print();
+            } catch (error) {
+                console.error('Error al imprimir automáticamente:', error);
+                document.querySelector('.print-button').style.display = 'block';
+            }
+        }
+
+        // Optimización para impresión
+        window.addEventListener('beforeprint', function() {
+            document.body.style.height = 'auto';
+            document.querySelector('.ticket').style.height = 'auto';
+        });
+
+        // Cerrar ventana después de imprimir (versión mejorada)
+        window.addEventListener('afterprint', function() {
+            console.log('Impresión completada, iniciando cierre...');
+            
+            // Mostrar indicador de cierre
+            const indicator = document.createElement('div');
+            indicator.innerHTML = `
+                <div style="
+                    position: fixed; 
+                    top: 20px; 
+                    right: 20px; 
+                    background: #28a745; 
+                    color: white; 
+                    padding: 15px 20px; 
+                    border-radius: 8px; 
+                    font-size: 14px;
+                    z-index: 10000;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                    font-family: Arial, sans-serif;
+                ">
+                    ✓ Impresión completada - Cerrando...
+                </div>
+            `;
+            document.body.appendChild(indicator);
+            
+            setTimeout(function() {
+                try {
+                    // Múltiples métodos para cerrar la ventana
+                    window.opener = null;
+                    window.open('', '_self').close();
+                } catch (error) {
+                    try {
+                        window.close();
+                    } catch (error2) {
+                        // Si no se puede cerrar, redirigir a lista de órdenes
+                        console.log('No se puede cerrar automáticamente, redirigiendo...');
+                        
+                        indicator.innerHTML = `
+                            <div style="
+                                position: fixed; 
+                                top: 50%; 
+                                left: 50%; 
+                                transform: translate(-50%, -50%); 
+                                background: #007bff; 
+                                color: white; 
+                                padding: 20px; 
+                                border-radius: 8px; 
+                                text-align: center;
+                                font-family: Arial, sans-serif;
+                                z-index: 10000;
+                                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                            ">
+                                <h3>✓ Cuenta impresa exitosamente</h3>
+                                <p>Redirigiendo a la lista de órdenes...</p>
+                            </div>
+                        `;
+                        
+                        setTimeout(function() {
+                            window.location.href = '/orders';
+                        }, 2000);
+                    }
+                }
+            }, 1000);
+        });
+
+        // Ejecutar impresión cuando la página esté completamente cargada
+        window.addEventListener('load', function() {
+            pageLoaded = true;
+            console.log('Página cargada, iniciando impresión en 600ms...');
+            setTimeout(autoPrint, 600);
+        });
+
+        // Fallback: ejecutar si el DOM está listo y han pasado 2 segundos
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                if (!printExecuted && pageLoaded) {
+                    console.log('Ejecutando impresión de respaldo...');
+                    autoPrint();
+                }
+            }, 2000);
+        });
+
+        // Atajos de teclado
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+P o Cmd+P para imprimir manual
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                e.preventDefault();
+                window.print();
+            }
+            
+            // Escape para cerrar ventana
+            if (e.key === 'Escape') {
+                if (window.opener) {
+                    window.close();
+                } else {
+                    window.location.href = '/orders';
+                }
+            }
+        });
+
+
+        
+        // Debugging inicial
+        console.log('Script de cuenta del cliente cargado - Impresión automática activada');
+    </script>
+</body>
+</html>

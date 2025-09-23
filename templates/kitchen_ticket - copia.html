@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Cocina - Orden #{{ order.id }}</title>
+    <style>
+        @page {
+            size: 58mm auto;
+            margin: 1mm;
+        }
+        
+        body {
+            font-family: 'Courier New', 'Lucida Console', monospace;
+            margin: 0;
+            padding: 2px;
+            font-size: 9px;
+            line-height: 1.1;
+            background: white;
+            color: black;
+            width: 54mm;
+        }
+        
+        /* Encabezado */
+        .header {
+            text-align: center;
+            border-bottom: 1px solid #000;
+            padding-bottom: 3px;
+            margin-bottom: 5px;
+        }
+        
+        .restaurant-name {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        
+        .ticket-type {
+            font-size: 10px;
+            font-weight: bold;
+            border: 1px solid #000;
+            padding: 2px;
+            margin: 3px 0;
+            background: #000;
+            color: white;
+        }
+        
+        /* Información de orden */
+        .order-info {
+            margin-bottom: 5px;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 3px;
+        }
+        
+        .order-number {
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 3px;
+        }
+        
+        .info-line {
+            margin-bottom: 1px;
+            font-size: 8px;
+        }
+        
+        .info-line .label {
+            display: inline-block;
+            width: 35%;
+            font-weight: bold;
+        }
+        
+        .info-line .value {
+            display: inline-block;
+            width: 65%;
+            text-align: right;
+        }
+        
+        /* Items de la orden */
+        .item {
+            margin-bottom: 8px;
+            border: 1px solid #000;
+            padding: 3px;
+        }
+        
+        .item-header {
+            margin-bottom: 3px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 2px;
+        }
+        
+        .quantity-badge {
+            display: inline-block;
+            background: #000;
+            color: white;
+            padding: 2px 4px;
+            font-weight: bold;
+            font-size: 10px;
+            margin-right: 5px;
+            min-width: 15px;
+            text-align: center;
+        }
+        
+        .product-name {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            vertical-align: top;
+        }
+        
+        /* Variaciones */
+        .variations {
+            margin: 3px 0;
+            padding: 2px;
+            border-left: 2px solid #000;
+            font-size: 8px;
+        }
+        
+        .variation-line {
+            margin-bottom: 1px;
+        }
+        
+        .variation-icon {
+            margin-right: 3px;
+            font-weight: bold;
+        }
+        
+        /* Notas especiales */
+        .special-notes {
+            margin: 3px 0;
+            padding: 3px;
+            border: 1px dashed #000;
+            font-size: 8px;
+            font-weight: bold;
+        }
+        
+        .notes-icon {
+            margin-right: 3px;
+        }
+        
+        /* Tipo de servicio */
+        .service-type {
+            text-align: center;
+            border: 1px solid #000;
+            padding: 3px;
+            font-weight: bold;
+            font-size: 10px;
+            margin-top: 8px;
+            background: #000;
+            color: white;
+        }
+        
+        /* Notas generales */
+        .general-notes {
+            margin-top: 5px;
+            padding: 3px;
+            border: 1px dashed #000;
+            font-size: 8px;
+        }
+        
+        /* Pie de página */
+        .footer {
+            text-align: center;
+            margin-top: 8px;
+            border-top: 1px dashed #000;
+            padding-top: 3px;
+            font-size: 7px;
+        }
+        
+        /* Separadores */
+        .separator {
+            text-align: center;
+            margin: 3px 0;
+            font-size: 8px;
+        }
+        
+        .center {
+            text-align: center;
+        }
+        
+        .line {
+            border-bottom: 1px solid #000;
+            margin: 2px 0;
+        }
+        
+        .dashed-line {
+            border-bottom: 1px dashed #000;
+            margin: 2px 0;
+        }
+        
+        /* Ocultar en impresión */
+        @media print {
+            body {
+                margin: 0;
+                padding: 1px;
+                width: auto;
+            }
+            
+            .no-print {
+                display: none;
+            }
+            
+            .special-notes {
+                border: 1px dashed #000;
+            }
+        }
+        
+        /* Destacar elementos importantes */
+        .urgent {
+            background: none;
+            border: 2px solid #000;
+            font-weight: bold;
+        }
+        
+        .priority-high {
+            border-left: 3px solid #000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Encabezado -->
+    <div class="header">
+        <div class="restaurant-name">EPICURO</div>
+        <div class="ticket-type">TICKET COCINA</div>
+    </div>
+    
+    <!-- Información de la orden -->
+    <div class="order-info">
+        <div class="order-number">ORDEN #{{ order.id }}</div>
+        <div class="info-line">
+            <span class="label">Fecha:</span>
+            <span class="value">{{ order.created_at.strftime('%d/%m/%Y') }}</span>
+        </div>
+        <div class="info-line">
+            <span class="label">Hora:</span>
+            <span class="value">{{ order.created_at.strftime('%H:%M') }}</span>
+        </div>
+        {% if order.customer_name %}
+        <div class="info-line">
+            <span class="label">Cliente:</span>
+            <span class="value">{{ order.customer_name }}</span>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Separador -->
+    <div class="separator">================================</div>
+    
+    <!-- Items de la orden -->
+    {% for item in order_items %}
+    <div class="item">
+        <div class="item-header">
+            <span class="quantity-badge">{{ item.quantity }}</span>
+            <span class="product-name">{{ item.product_name }}</span>
+        </div>
+        
+        {% if item.selected_variations %}
+        <div class="variations">
+            {% set variations = item.selected_variations.split(' | ') %}
+            {% for variation in variations %}
+                {% if variation.strip() %}
+                <div class="variation-line">
+                    {% if 'Proteína:' in variation or 'Protein:' in variation %}
+                        <span class="variation-icon">></span>
+                    {% elif 'Pan:' in variation or 'Bread:' in variation %}
+                        <span class="variation-icon">></span>
+                    {% elif 'Tamaño:' in variation or 'Size:' in variation %}
+                        <span class="variation-icon">></span>
+                    {% elif 'Sabor:' in variation or 'Flavor:' in variation %}
+                        <span class="variation-icon">></span>
+                    {% else %}
+                        <span class="variation-icon">+</span>
+                    {% endif %}
+                    <strong>{{ variation.strip() }}</strong>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <!-- Notas especiales del producto -->
+        {% if item.item_notes %}
+        <div class="special-notes urgent">
+            <span class="notes-icon">!</span>
+            <strong>NOTAS ESPECIALES:</strong><br>
+            {{ item.item_notes }}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    
+    <!-- Separador -->
+    <div class="separator">================================</div>
+    
+    <!-- Tipo de servicio -->
+    <div class="service-type">
+        {% if order.order_type == 'takeaway' %}
+            PARA LLEVAR
+        {% else %}
+            SERVIR EN MESA
+        {% endif %}
+    </div>
+    
+    <!-- Notas generales de la orden -->
+    {% if order.notes %}
+    <div class="general-notes priority-high">
+        <div style="font-weight: bold; margin-bottom: 2px;">NOTAS GENERALES:</div>
+        {{ order.notes }}
+    </div>
+    {% endif %}
+    
+    <!-- Separador final -->
+    <div class="dashed-line"></div>
+    
+    <!-- Pie de página -->
+    <div class="footer">
+        <div>Impreso: {{ current_time|dateformat('%d/%m/%Y %H:%M') }}</div>
+    </div>
+    
+    <!-- Botones (no se imprimen) -->
+    <div class="no-print center" style="margin-top: 10px;">
+        <button onclick="window.print()" style="background: #000; color: white; border: none; padding: 5px 10px; font-size: 10px; cursor: pointer;">
+            Imprimir
+        </button>
+        <button onclick="window.close()" style="background: #666; color: white; border: none; padding: 5px 10px; font-size: 10px; cursor: pointer; margin-left: 5px;">
+            Cerrar
+        </button>
+    </div>
+    
+    <script>
+        // Auto-imprimir al cargar (opcional)
+        // window.onload = function() {
+        //     window.print();
+        // }
+        
+        // Cerrar ventana después de imprimir
+        window.onafterprint = function() {
+            setTimeout(function() {
+                window.close();
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

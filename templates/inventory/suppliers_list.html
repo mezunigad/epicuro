@@ -14,10 +14,10 @@
                 <p class="mb-0 mt-2 opacity-75">Administra tus proveedores e información de contacto</p>
             </div>
             <div class="col-md-4 text-end">
-                <button class="btn btn-light btn-lg" onclick="alert('Función en desarrollo')">
+                <a href="{{ url_for('new_supplier') if url_for else '#' }}" class="btn btn-light btn-lg" onclick="if(!this.href || this.href.endsWith('#')) { alert('Función en desarrollo'); return false; }">
                     <i class="fas fa-plus-circle me-2"></i>
                     Nuevo Proveedor
-                </button>
+                </a>
             </div>
         </div>
     </div>
@@ -77,7 +77,10 @@
                     </thead>
                     <tbody>
                         {% for supplier in suppliers %}
-                        <tr>
+                        <tr class="supplier-row"
+                            data-name="{{ supplier.name.lower() if supplier.name else (supplier[1].lower() if supplier|length > 1 else '') }}"
+                            data-type="{{ supplier.type if supplier.type else (supplier[5] if supplier|length > 5 else 'general') }}"
+                            data-status="{{ supplier.status if supplier.status else (supplier[6] if supplier|length > 6 else 'active') }}">
                             <td>
                                 <div>
                                     <strong>{{ supplier.name if supplier.name else supplier[1] }}</strong>
@@ -110,7 +113,7 @@
                             </td>
                             <td>
                                 {% set supplier_status = supplier.status if supplier.status else (supplier[6] if supplier|length > 6 else 'active') %}
-                                {% if supplier_status == 'active' %}
+                                {% if supplier_status == 'active' or supplier_status == 1 %}
                                     <span class="badge bg-success">
                                         <i class="fas fa-check me-1"></i>Activo
                                     </span>
@@ -129,15 +132,22 @@
                                 <small class="text-muted">Nunca</small>
                             </td>
                             <td>
+                                {% set supplier_id = supplier.id if supplier.id else supplier[0] %}
+                                {% set supplier_name = supplier.name if supplier.name else supplier[1] %}
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <button class="btn btn-outline-primary" title="Ver detalles" onclick="alert('Función en desarrollo')">
+                                    <button class="btn btn-outline-primary" 
+                                            title="Ver detalles" 
+                                            onclick="viewSupplier({{ supplier_id }}, '{{ supplier_name }}')">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    <button class="btn btn-outline-warning" title="Editar" onclick="alert('Función en desarrollo')">
+                                    <button class="btn btn-outline-warning" 
+                                            title="Editar" 
+                                            onclick="editSupplier({{ supplier_id }})">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="btn btn-outline-danger" title="Eliminar"
-                                            onclick="confirmDelete('{{ supplier.id if supplier.id else supplier[0] }}', '{{ supplier.name if supplier.name else supplier[1] }}')">
+                                    <button class="btn btn-outline-danger" 
+                                            title="Eliminar"
+                                            onclick="deleteSupplier({{ supplier_id }}, '{{ supplier_name }}')">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -152,9 +162,9 @@
                 <i class="fas fa-truck fa-4x text-muted mb-3"></i>
                 <h4 class="text-muted">No hay proveedores registrados</h4>
                 <p class="text-muted">Comienza agregando tu primer proveedor</p>
-                <button class="btn btn-primary" onclick="alert('Función en desarrollo')">
+                <a href="{{ url_for('new_supplier') if url_for else '#' }}" class="btn btn-primary" onclick="if(!this.href || this.href.endsWith('#')) { alert('Función en desarrollo'); return false; }">
                     <i class="fas fa-plus me-2"></i>Agregar Primer Proveedor
-                </button>
+                </a>
             </div>
         {% endif %}
     </div>
@@ -176,7 +186,7 @@
         <div class="card text-center">
             <div class="card-body">
                 <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
-                <h5>{{ suppliers|length }}</h5>
+                <h5 id="active-suppliers-count">{{ suppliers|length }}</h5>
                 <small class="text-muted">Activos</small>
             </div>
         </div>
@@ -202,10 +212,36 @@
 </div>
 {% endif %}
 
+<!-- Modal para ver detalles del proveedor -->
+<div class="modal fade" id="viewSupplierModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-truck me-2"></i>Detalles del Proveedor
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="supplier-details-content">
+                    <!-- Contenido se llenará dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" onclick="editSupplierFromModal()">
+                    <i class="fas fa-edit me-2"></i>Editar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+let currentSupplierId = null;
+
 // Búsqueda en tiempo real
 document.getElementById('searchSupplier').addEventListener('input', function() {
     filterTable();
@@ -225,16 +261,14 @@ function filterTable() {
     const statusFilter = document.getElementById('filterStatus').value;
     const typeFilter = document.getElementById('filterType').value;
     
-    const table = document.getElementById('suppliersTable');
-    if (!table) return;
+    const rows = document.querySelectorAll('.supplier-row');
+    let visibleCount = 0;
     
-    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-    
-    for (let row of rows) {
-        const name = row.cells[0].textContent.toLowerCase();
+    rows.forEach(row => {
+        const name = row.dataset.name || '';
+        const type = row.dataset.type || '';
+        const status = row.dataset.status || '';
         const contact = row.cells[1].textContent.toLowerCase();
-        const type = row.cells[2].textContent.toLowerCase();
-        const status = row.cells[3].textContent.toLowerCase();
         
         let showRow = true;
         
@@ -244,27 +278,155 @@ function filterTable() {
         }
         
         // Filtro de estado
-        if (statusFilter && !status.includes(statusFilter)) {
+        if (statusFilter === 'active' && status !== 'active' && status !== '1') {
+            showRow = false;
+        } else if (statusFilter === 'inactive' && (status === 'active' || status === '1')) {
             showRow = false;
         }
         
         // Filtro de tipo
-        if (typeFilter && !type.includes(typeFilter)) {
+        if (typeFilter && type !== typeFilter) {
             showRow = false;
         }
         
         row.style.display = showRow ? '' : 'none';
+        if (showRow) visibleCount++;
+    });
+    
+    // Actualizar contador
+    document.querySelector('.badge.bg-primary').textContent = `${visibleCount} proveedores`;
+}
+
+// Función para ver detalles del proveedor
+function viewSupplier(supplierId, supplierName) {
+    currentSupplierId = supplierId;
+    
+    // Buscar la fila del proveedor para obtener más datos
+    const rows = document.querySelectorAll('.supplier-row');
+    let supplierRow = null;
+    
+    for (let row of rows) {
+        if (row.style.display !== 'none') {
+            const buttons = row.querySelectorAll('button[onclick*="' + supplierId + '"]');
+            if (buttons.length > 0) {
+                supplierRow = row;
+                break;
+            }
+        }
+    }
+    
+    if (supplierRow) {
+        const name = supplierRow.cells[0].querySelector('strong').textContent;
+        const company = supplierRow.cells[0].querySelector('small');
+        const contactInfo = supplierRow.cells[1].innerHTML;
+        const type = supplierRow.cells[2].textContent.trim();
+        const status = supplierRow.cells[3].textContent.trim();
+        
+        const detailsHtml = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Información General</h6>
+                    <p><strong>Nombre:</strong> ${name}</p>
+                    ${company ? `<p><strong>Empresa:</strong> ${company.textContent}</p>` : ''}
+                    <p><strong>Tipo:</strong> ${type}</p>
+                    <p><strong>Estado:</strong> ${status}</p>
+                </div>
+                <div class="col-md-6">
+                    <h6>Información de Contacto</h6>
+                    <div>${contactInfo || '<p class="text-muted">Sin información de contacto</p>'}</div>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col-12">
+                    <h6>Estadísticas</h6>
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="border rounded p-2">
+                                <div class="h4 text-primary">0</div>
+                                <small class="text-muted">Compras Totales</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border rounded p-2">
+                                <div class="h4 text-success">$0</div>
+                                <small class="text-muted">Monto Total</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border rounded p-2">
+                                <div class="h4 text-info">Nunca</div>
+                                <small class="text-muted">Última Compra</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('supplier-details-content').innerHTML = detailsHtml;
+        const modal = new bootstrap.Modal(document.getElementById('viewSupplierModal'));
+        modal.show();
     }
 }
 
-// Confirmación de eliminación
-function confirmDelete(supplierId, supplierName) {
-    alert('Función de eliminación en desarrollo');
+// Función para editar proveedor
+function editSupplier(supplierId) {
+    // Crear la URL dinámicamente en JavaScript
+    const editUrl = `/inventory/suppliers/${supplierId}/edit`;
+    
+    // Verificar si la ruta existe haciendo una prueba
+    fetch(editUrl, {method: 'HEAD'})
+        .then(response => {
+            if (response.ok) {
+                window.location.href = editUrl;
+            } else {
+                alert(`Editar proveedor ID: ${supplierId}\n\nFunción en desarrollo`);
+            }
+        })
+        .catch(() => {
+            alert(`Editar proveedor ID: ${supplierId}\n\nFunción en desarrollo`);
+        });
 }
 
-// Auto-refresh cada 2 minutos
-setInterval(function() {
-    location.reload();
-}, 120000);
+// Función para editar desde el modal
+function editSupplierFromModal() {
+    if (currentSupplierId) {
+        editSupplier(currentSupplierId);
+    }
+}
+
+// Función para eliminar proveedor
+function deleteSupplier(supplierId, supplierName) {
+    if (confirm(`¿Estás seguro de que quieres eliminar el proveedor "${supplierName}"?\n\nEsta acción no se puede deshacer.`)) {
+        // Crear formulario para envío POST
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/inventory/suppliers/${supplierId}/delete`;
+        form.style.display = 'none';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    // Ctrl+F para buscar
+    if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        document.getElementById('searchSupplier').focus();
+    }
+    
+    // Escape para cerrar modal
+    if (e.key === 'Escape') {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('viewSupplierModal'));
+        if (modal) {
+            modal.hide();
+        }
+    }
+});
+
+// Auto-focus en búsqueda
+document.getElementById('searchSupplier').focus();
 </script>
 {% endblock %}

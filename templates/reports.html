@@ -28,11 +28,6 @@
     font-size: 0.9rem;
 }
 
-.metric-change {
-    font-size: 0.8rem;
-    margin-top: 10px;
-}
-
 .chart-container {
     position: relative;
     height: 300px;
@@ -67,6 +62,52 @@
 .product-rank.gold { background: #f39c12; }
 .product-rank.silver { background: #95a5a6; }
 .product-rank.bronze { background: #e67e22; }
+
+.filter-card {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.export-btn {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.export-btn:hover {
+    background: linear-gradient(135deg, #218838, #1fa084);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.quick-filter {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    color: #1976d2;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.quick-filter:hover {
+    background: #1976d2;
+    color: white;
+    text-decoration: none;
+}
+
+.quick-filter.active {
+    background: #1976d2;
+    color: white;
+}
 </style>
 {% endblock %}
 
@@ -82,16 +123,88 @@
                 <p class="mb-0 mt-2 opacity-75">Análisis de ventas y rendimiento del negocio</p>
             </div>
             <div class="col-md-4 text-end">
-                <button onclick="exportReport()" class="btn btn-light btn-lg">
-                    <i class="fas fa-download me-2"></i>
-                    Exportar Reporte
+                <button class="btn export-btn" onclick="exportToExcel()">
+                    <i class="fas fa-file-excel me-2"></i>
+                    Exportar a Excel
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Métricas principales -->
+<!-- Filtros de fecha -->
+<div class="filter-card">
+    <form method="GET" action="{{ url_for('reports') }}" id="date-filter-form">
+        <div class="row align-items-end">
+            <div class="col-md-3">
+                <label for="start_date" class="form-label">
+                    <i class="fas fa-calendar me-1"></i>Fecha Inicio
+                </label>
+                <input type="date" 
+                       class="form-control" 
+                       id="start_date" 
+                       name="start_date" 
+                       value="{{ request.args.get('start_date', '') }}">
+            </div>
+            <div class="col-md-3">
+                <label for="end_date" class="form-label">
+                    <i class="fas fa-calendar-check me-1"></i>Fecha Fin
+                </label>
+                <input type="date" 
+                       class="form-control" 
+                       id="end_date" 
+                       name="end_date" 
+                       value="{{ request.args.get('end_date', '') }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter me-2"></i>Filtrar
+                </button>
+            </div>
+            <div class="col-md-3">
+                <a href="{{ url_for('reports') }}" class="btn btn-outline-secondary w-100">
+                    <i class="fas fa-times me-2"></i>Limpiar
+                </a>
+            </div>
+        </div>
+        
+        <!-- Filtros rápidos -->
+        <div class="row mt-3">
+            <div class="col-12">
+                <label class="form-label mb-2">Filtros Rápidos:</label>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="javascript:void(0)" class="quick-filter" onclick="setDateRange('today')">Hoy</a>
+                    <a href="javascript:void(0)" class="quick-filter" onclick="setDateRange('yesterday')">Ayer</a>
+                    <a href="javascript:void(0)" class="quick-filter" onclick="setDateRange('week')">Esta Semana</a>
+                    <a href="javascript:void(0)" class="quick-filter" onclick="setDateRange('last_week')">Semana Pasada</a>
+                    <a href="javascript:void(0)" class="quick-filter" onclick="setDateRange('month')">Este Mes</a>
+                    <a href="javascript:void(0)" class="quick-filter" onclick="setDateRange('last_month')">Mes Pasado</a>
+                    <a href="javascript:void(0)" class="quick-filter" onclick="setDateRange('quarter')">Este Trimestre</a>
+                    <a href="javascript:void(0)" class="quick-filter" onclick="setDateRange('year')">Este Año</a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Información del período seleccionado -->
+{% if request.args.get('start_date') or request.args.get('end_date') %}
+<div class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i>
+    <strong>Período seleccionado:</strong>
+    {% if request.args.get('start_date') %}
+        Desde {{ request.args.get('start_date') }}
+    {% endif %}
+    {% if request.args.get('end_date') %}
+        hasta {{ request.args.get('end_date') }}
+    {% endif %}
+    {% if not request.args.get('start_date') and request.args.get('end_date') %}
+        Hasta {{ request.args.get('end_date') }}
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Métricas principales - SOLO DATOS REALES -->
 <div class="row mb-4">
     <div class="col-lg-3 col-md-6 mb-3">
         <div class="metric-card" style="background: linear-gradient(135deg, #2ecc71, #27ae60);">
@@ -99,9 +212,6 @@
                 <div class="flex-grow-1">
                     <div class="metric-value">${{ "{:,.0f}".format(stats.today_sales) }}</div>
                     <div class="metric-label">Ventas Hoy</div>
-                    <div class="metric-change">
-                        <i class="fas fa-arrow-up me-1"></i>+15% vs ayer
-                    </div>
                 </div>
                 <div class="metric-icon">
                     <i class="fas fa-dollar-sign fa-2x opacity-75"></i>
@@ -116,9 +226,6 @@
                 <div class="flex-grow-1">
                     <div class="metric-value">${{ "{:,.0f}".format(stats.week_sales) }}</div>
                     <div class="metric-label">Ventas Esta Semana</div>
-                    <div class="metric-change">
-                        <i class="fas fa-arrow-up me-1"></i>+8% vs semana anterior
-                    </div>
                 </div>
                 <div class="metric-icon">
                     <i class="fas fa-calendar-week fa-2x opacity-75"></i>
@@ -133,9 +240,6 @@
                 <div class="flex-grow-1">
                     <div class="metric-value">${{ "{:,.0f}".format(stats.month_sales) }}</div>
                     <div class="metric-label">Ventas Este Mes</div>
-                    <div class="metric-change">
-                        <i class="fas fa-arrow-up me-1"></i>+12% vs mes anterior
-                    </div>
                 </div>
                 <div class="metric-icon">
                     <i class="fas fa-calendar-alt fa-2x opacity-75"></i>
@@ -149,10 +253,7 @@
             <div class="d-flex align-items-center">
                 <div class="flex-grow-1">
                     <div class="metric-value">{{ stats.total_orders }}</div>
-                    <div class="metric-label">Total Órdenes</div>
-                    <div class="metric-change">
-                        <i class="fas fa-chart-line me-1"></i>Histórico
-                    </div>
+                    <div class="metric-label">Órdenes (7 días)</div>
                 </div>
                 <div class="metric-icon">
                     <i class="fas fa-shopping-cart fa-2x opacity-75"></i>
@@ -164,35 +265,8 @@
 
 <!-- Gráficos y análisis -->
 <div class="row">
-    <!-- Gráfico de ventas -->
-    <div class="col-lg-8 mb-4">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-line me-2"></i>
-                    Tendencia de Ventas
-                </h5>
-                <div class="btn-group" role="group">
-                    <input type="radio" class="btn-check" name="period" id="period7" checked>
-                    <label class="btn btn-outline-primary btn-sm" for="period7">7 días</label>
-                    
-                    <input type="radio" class="btn-check" name="period" id="period30">
-                    <label class="btn btn-outline-primary btn-sm" for="period30">30 días</label>
-                    
-                    <input type="radio" class="btn-check" name="period" id="period90">
-                    <label class="btn btn-outline-primary btn-sm" for="period90">3 meses</label>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="salesChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-    
     <!-- Top productos -->
-    <div class="col-lg-4 mb-4">
+    <div class="col-lg-6 mb-4">
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
@@ -221,17 +295,15 @@
                 {% else %}
                     <div class="text-center py-4">
                         <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">No hay datos suficientes para mostrar productos más vendidos</p>
+                        <p class="text-muted">No hay ventas en los últimos 7 días</p>
+                        <small class="text-muted">Los datos aparecerán cuando se registren ventas</small>
                     </div>
                 {% endif %}
             </div>
         </div>
     </div>
-</div>
 
-<!-- Análisis adicional -->
-<div class="row">
-    <!-- Distribución por categorías -->
+    <!-- Ventas por categoría -->
     <div class="col-lg-6 mb-4">
         <div class="card">
             <div class="card-header">
@@ -241,220 +313,336 @@
                 </h5>
             </div>
             <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="categoryChart"></canvas>
-                </div>
+                {% if category_sales %}
+                    {% for category in category_sales %}
+                        {% if category.total_sales > 0 %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center">
+                                <div class="me-2" style="width: 12px; height: 12px; background-color: {{ category.color }}; border-radius: 2px;"></div>
+                                <span>{{ category.category_name }}</span>
+                            </div>
+                            <span class="text-success fw-bold">${{ "{:,.0f}".format(category.total_sales) }}</span>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-chart-pie fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No hay datos de categorías</p>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
-    
-    <!-- Horarios de mayor venta -->
+</div>
+
+<!-- Horarios de venta -->
+<div class="row">
     <div class="col-lg-6 mb-4">
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
                     <i class="fas fa-clock me-2"></i>
-                    Horarios Pico
+                    Horarios de Venta (7 días)
                 </h5>
             </div>
             <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="hoursChart"></canvas>
+                {% if hourly_sales %}
+                    {% for hour_data in hourly_sales %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>{{ hour_data.hour }}:00</span>
+                        <div class="d-flex align-items-center">
+                            <div class="progress me-2" style="width: 100px; height: 20px;">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {{ (hour_data.order_count / hourly_sales|map(attribute='order_count')|max * 100) if hourly_sales|map(attribute='order_count')|max > 0 else 0 }}%">
+                                </div>
+                            </div>
+                            <span class="fw-bold">{{ hour_data.order_count }} órdenes</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-clock fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No hay datos de horarios</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Métricas detalladas -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-table me-2"></i>
+                    Resumen Detallado
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 text-center mb-3">
+                        <h4 class="text-primary">${{ "{:,.0f}".format(stats.month_sales / 30 if stats.month_sales > 0 else 0) }}</h4>
+                        <small class="text-muted">Promedio diario</small>
+                    </div>
+                    <div class="col-md-6 text-center mb-3">
+                        <h4 class="text-success">{{ "{:.1f}".format(stats.total_orders / 7 if stats.total_orders > 0 else 0) }}</h4>
+                        <small class="text-muted">Órdenes promedio/día</small>
+                    </div>
+                    <div class="col-md-6 text-center mb-3">
+                        <h4 class="text-warning">${{ "{:,.0f}".format(stats.week_sales / stats.total_orders if stats.total_orders > 0 else 0) }}</h4>
+                        <small class="text-muted">Ticket promedio</small>
+                    </div>
+                    <div class="col-md-6 text-center mb-3">
+                        <h4 class="text-info">{{ top_products|length if top_products else 0 }}</h4>
+                        <small class="text-muted">Productos vendidos</small>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Métricas detalladas -->
-<div class="card">
-    <div class="card-header">
-        <h5 class="card-title mb-0">
-            <i class="fas fa-table me-2"></i>
-            Resumen Detallado
-        </h5>
-    </div>
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-3 text-center">
-                <h4 class="text-primary">${{ "{:,.0f}".format(stats.month_sales / 30 if stats.month_sales > 0 else 0) }}</h4>
-                <small class="text-muted">Promedio diario</small>
-            </div>
-            <div class="col-md-3 text-center">
-                <h4 class="text-success">{{ "{:,.0f}".format(stats.total_orders / 30 if stats.total_orders > 0 else 0) }}</h4>
-                <small class="text-muted">Órdenes promedio/día</small>
-            </div>
-            <div class="col-md-3 text-center">
-                <h4 class="text-warning">${{ "{:,.0f}".format(stats.month_sales / stats.total_orders if stats.total_orders > 0 else 0) }}</h4>
-                <small class="text-muted">Ticket promedio</small>
-            </div>
-            <div class="col-md-3 text-center">
-                <h4 class="text-info">{{ top_products|length if top_products else 0 }}</h4>
-                <small class="text-muted">Productos activos</small>
-            </div>
-        </div>
-    </div>
+<!-- Mensaje si no hay datos -->
+{% if stats.total_orders == 0 %}
+<div class="alert alert-info text-center">
+    <i class="fas fa-info-circle fa-2x mb-3"></i>
+    <h5>No hay datos suficientes para mostrar reportes</h5>
+    <p>Los reportes aparecerán una vez que se registren ventas en el sistema.</p>
+    <a href="{{ url_for('new_order') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Crear Primera Orden
+    </a>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
-<!-- Chart.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-
 <script>
-// Configuración de colores
-const colors = {
-    primary: '#e74c3c',
-    secondary: '#3498db',
-    success: '#2ecc71',
-    warning: '#f39c12',
-    info: '#17a2b8',
-    danger: '#dc3545'
-};
-
-// Datos simulados para gráficos (en un entorno real vendrían del backend)
-const salesData = {
-    labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
-    datasets: [{
-        label: 'Ventas ($)',
-        data: [{{ stats.today_sales * 0.8 }}, {{ stats.today_sales * 1.2 }}, {{ stats.today_sales * 0.9 }}, {{ stats.today_sales * 1.1 }}, {{ stats.today_sales * 1.3 }}, {{ stats.today_sales * 1.5 }}, {{ stats.today_sales }}],
-        borderColor: colors.primary,
-        backgroundColor: colors.primary + '20',
-        tension: 0.4,
-        fill: true
-    }]
-};
-
-const categoryData = {
-    labels: ['Sándwiches', 'Bebidas', 'Acompañamientos', 'Postres', 'Desayunos'],
-    datasets: [{
-        data: [35, 25, 20, 12, 8],
-        backgroundColor: [
-            colors.primary,
-            colors.secondary,
-            colors.warning,
-            colors.success,
-            '#9b59b6'
-        ]
-    }]
-};
-
-const hoursData = {
-    labels: ['8:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00'],
-    datasets: [{
-        label: 'Órdenes',
-        data: [5, 8, 15, 20, 12, 18, 10],
-        backgroundColor: colors.secondary,
-        borderColor: colors.secondary,
-        borderWidth: 2
-    }]
-};
-
-// Crear gráficos
-const salesChart = new Chart(document.getElementById('salesChart'), {
-    type: 'line',
-    data: salesData,
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    callback: function(value) {
-                        return '$' + value.toLocaleString();
-                    }
-                }
-            }
-        }
-    }
-});
-
-const categoryChart = new Chart(document.getElementById('categoryChart'), {
-    type: 'doughnut',
-    data: categoryData,
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'bottom'
-            }
-        }
-    }
-});
-
-const hoursChart = new Chart(document.getElementById('hoursChart'), {
-    type: 'bar',
-    data: hoursData,
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true
-            }
-        }
-    }
-});
-
-// Función para exportar reporte
-function exportReport() {
-    // Simulación de exportación
-    const reportData = {
-        date: new Date().toLocaleDateString(),
-        stats: {
-            today_sales: {{ stats.today_sales }},
-            week_sales: {{ stats.week_sales }},
-            month_sales: {{ stats.month_sales }},
-            total_orders: {{ stats.total_orders }}
-        },
-        top_products: {{ top_products|tojson if top_products else "[]" }}
-    };
+// Función para establecer rangos de fechas rápidos
+function setDateRange(range) {
+    const today = new Date();
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
     
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportData, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `reporte_epicuro_${new Date().toISOString().split('T')[0]}.json`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    let startDate, endDate;
     
-    // Mostrar mensaje de éxito
-    const alert = document.createElement('div');
-    alert.className = 'alert alert-success position-fixed';
-    alert.style.top = '20px';
-    alert.style.right = '20px';
-    alert.style.zIndex = '9999';
-    alert.innerHTML = '<i class="fas fa-download me-2"></i>Reporte exportado exitosamente';
+    switch(range) {
+        case 'today':
+            startDate = new Date(today);
+            endDate = new Date(today);
+            break;
+            
+        case 'yesterday':
+            startDate = new Date(today);
+            startDate.setDate(today.getDate() - 1);
+            endDate = new Date(startDate);
+            break;
+            
+        case 'week':
+            // Esta semana (lunes a domingo)
+            const dayOfWeek = today.getDay();
+            const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+            startDate = new Date(today);
+            startDate.setDate(diff);
+            endDate = new Date(today);
+            break;
+            
+        case 'last_week':
+            const lastWeekStart = new Date(today);
+            const lastWeekDayOfWeek = today.getDay();
+            const lastWeekDiff = today.getDate() - lastWeekDayOfWeek + (lastWeekDayOfWeek === 0 ? -6 : 1) - 7;
+            lastWeekStart.setDate(lastWeekDiff);
+            startDate = new Date(lastWeekStart);
+            endDate = new Date(lastWeekStart);
+            endDate.setDate(lastWeekStart.getDate() + 6);
+            break;
+            
+        case 'month':
+            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            endDate = new Date(today);
+            break;
+            
+        case 'last_month':
+            startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+            break;
+            
+        case 'quarter':
+            const quarter = Math.floor(today.getMonth() / 3);
+            startDate = new Date(today.getFullYear(), quarter * 3, 1);
+            endDate = new Date(today);
+            break;
+            
+        case 'year':
+            startDate = new Date(today.getFullYear(), 0, 1);
+            endDate = new Date(today);
+            break;
+    }
     
-    document.body.appendChild(alert);
-    setTimeout(() => {
-        document.body.removeChild(alert);
-    }, 3000);
+    // Formatear fechas a YYYY-MM-DD
+    if (startDate) {
+        startDateInput.value = startDate.toISOString().split('T')[0];
+    }
+    if (endDate) {
+        endDateInput.value = endDate.toISOString().split('T')[0];
+    }
+    
+    // Enviar formulario automáticamente
+    document.getElementById('date-filter-form').submit();
 }
 
-// Cambiar período de análisis
-document.querySelectorAll('input[name="period"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-        // Aquí actualizarías los datos del gráfico según el período seleccionado
-        console.log('Período cambiado a:', this.id);
-    });
+// Función para exportar a Excel
+function exportToExcel() {
+    // Obtener parámetros de fecha actuales
+    const urlParams = new URLSearchParams(window.location.search);
+    const startDate = urlParams.get('start_date') || '';
+    const endDate = urlParams.get('end_date') || '';
+    
+    // Mostrar modal de carga
+    showExportModal();
+    
+    // Crear URL para exportación
+    let exportUrl = '/reports/export/excel';
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    
+    if (params.toString()) {
+        exportUrl += '?' + params.toString();
+    }
+    
+    // Descargar archivo
+    const link = document.createElement('a');
+    link.href = exportUrl;
+    link.download = `reporte_ventas_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Cerrar modal después de un momento
+    setTimeout(() => {
+        hideExportModal();
+    }, 2000);
+}
+
+// Modal de exportación
+function showExportModal() {
+    // Crear modal si no existe
+    if (!document.getElementById('exportModal')) {
+        const modalHtml = `
+            <div class="modal fade" id="exportModal" tabindex="-1" data-bs-backdrop="static">
+                <div class="modal-dialog modal-sm">
+                    <div class="modal-content">
+                        <div class="modal-body text-center p-4">
+                            <div class="spinner-border text-success mb-3" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <h6>Generando Reporte Excel</h6>
+                            <p class="text-muted mb-0">Por favor espera...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+    modal.show();
+}
+
+function hideExportModal() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+    if (modal) {
+        modal.hide();
+    }
+}
+
+// Resaltar filtro activo
+document.addEventListener('DOMContentLoaded', function() {
+    // Establecer fechas por defecto si no hay filtros
+    const urlParams = new URLSearchParams(window.location.search);
+    if (!urlParams.get('start_date') && !urlParams.get('end_date')) {
+        // Por defecto mostrar últimos 7 días
+        const today = new Date();
+        const lastWeek = new Date(today);
+        lastWeek.setDate(today.getDate() - 7);
+        
+        document.getElementById('start_date').value = lastWeek.toISOString().split('T')[0];
+        document.getElementById('end_date').value = today.toISOString().split('T')[0];
+    }
+    
+    // Detectar qué filtro está activo
+    const startDate = urlParams.get('start_date');
+    const endDate = urlParams.get('end_date');
+    
+    if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const today = new Date();
+        
+        // Comparar fechas para determinar filtro activo
+        const todayStr = today.toISOString().split('T')[0];
+        const yesterdayStr = new Date(today.getTime() - 24*60*60*1000).toISOString().split('T')[0];
+        
+        if (startDate === todayStr && endDate === todayStr) {
+            highlightActiveFilter('today');
+        } else if (startDate === yesterdayStr && endDate === yesterdayStr) {
+            highlightActiveFilter('yesterday');
+        }
+        // Agregar más comparaciones según sea necesario
+    }
 });
 
-// Auto-refresh cada 5 minutos
+function highlightActiveFilter(filterType) {
+    // Remover clase active de todos
+    document.querySelectorAll('.quick-filter').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Agregar clase active al filtro correspondiente
+    const filterMap = {
+        'today': 'Hoy',
+        'yesterday': 'Ayer',
+        'week': 'Esta Semana',
+        'last_week': 'Semana Pasada',
+        'month': 'Este Mes',
+        'last_month': 'Mes Pasado',
+        'quarter': 'Este Trimestre',
+        'year': 'Este Año'
+    };
+    
+    const targetText = filterMap[filterType];
+    if (targetText) {
+        const targetBtn = Array.from(document.querySelectorAll('.quick-filter'))
+            .find(btn => btn.textContent.trim() === targetText);
+        if (targetBtn) {
+            targetBtn.classList.add('active');
+        }
+    }
+}
+
+// Auto-refresh cada 5 minutos solo si hay datos
+{% if stats.total_orders > 0 %}
 setInterval(function() {
     location.reload();
 }, 300000);
+{% endif %}
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    // Ctrl+E para exportar
+    if (e.ctrlKey && e.key === 'e') {
+        e.preventDefault();
+        exportToExcel();
+    }
+    
+    // Ctrl+F para focus en fecha inicio
+    if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        document.getElementById('start_date').focus();
+    }
+});
 </script>
 {% endblock %}

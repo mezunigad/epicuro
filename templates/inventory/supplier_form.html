@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if supplier %}Editar Proveedor{% else %}Nuevo Proveedor{% endif %} - Epicuro
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-{% if supplier %}edit{% else %}plus-circle{% endif %} me-3"></i>
+                    {% if supplier %}Editar Proveedor{% else %}Nuevo Proveedor{% endif %}
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">
+                    {% if supplier %}Modifica los datos del proveedor{% else %}Registra un nuevo proveedor{% endif %}
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('list_suppliers') }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left me-2"></i>Volver a Proveedores
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Información del Proveedor
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{% if supplier %}{{ url_for('update_supplier', supplier_id=supplier.id) }}{% else %}{{ url_for('create_supplier') }}{% endif %}">
+                    <!-- Información básica -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">
+                                    <i class="fas fa-building me-1"></i>Nombre del Proveedor *
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="name" 
+                                       name="name" 
+                                       value="{{ supplier.name if supplier else '' }}"
+                                       placeholder="Ej: Distribuidora Central"
+                                       required 
+                                       autocomplete="off">
+                                <div class="form-text">Nombre comercial del proveedor</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="company" class="form-label">
+                                    <i class="fas fa-industry me-1"></i>Razón Social
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="company" 
+                                       name="company" 
+                                       value="{{ supplier.company if supplier else '' }}"
+                                       placeholder="Ej: Distribuidora Central S.A."
+                                       autocomplete="off">
+                                <div class="form-text">Nombre legal de la empresa</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Información de contacto -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">
+                                    <i class="fas fa-phone me-1"></i>Teléfono
+                                </label>
+                                <input type="tel" 
+                                       class="form-control" 
+                                       id="phone" 
+                                       name="phone" 
+                                       value="{{ supplier.phone if supplier else '' }}"
+                                       placeholder="+56 9 1234 5678">
+                                <div class="form-text">Número de contacto principal</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">
+                                    <i class="fas fa-envelope me-1"></i>Email
+                                </label>
+                                <input type="email" 
+                                       class="form-control" 
+                                       id="email" 
+                                       name="email" 
+                                       value="{{ supplier.email if supplier else '' }}"
+                                       placeholder="contacto@proveedor.cl">
+                                <div class="form-text">Correo electrónico de contacto</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dirección -->
+                    <div class="mb-3">
+                        <label for="address" class="form-label">
+                            <i class="fas fa-map-marker-alt me-1"></i>Dirección
+                        </label>
+                        <textarea class="form-control" 
+                                  id="address" 
+                                  name="address" 
+                                  rows="2"
+                                  placeholder="Dirección completa del proveedor">{{ supplier.address if supplier else '' }}</textarea>
+                        <div class="form-text">Dirección física del proveedor</div>
+                    </div>
+                    
+                    <!-- Tipo y estado -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="type" class="form-label">
+                                    <i class="fas fa-tags me-1"></i>Tipo de Proveedor
+                                </label>
+                                <select class="form-select" id="type" name="type">
+                                    <option value="general" {% if supplier and supplier.type == 'general' %}selected{% endif %}>General</option>
+                                    <option value="food" {% if supplier and supplier.type == 'food' %}selected{% endif %}>Alimentos</option>
+                                    <option value="beverage" {% if supplier and supplier.type == 'beverage' %}selected{% endif %}>Bebidas</option>
+                                    <option value="equipment" {% if supplier and supplier.type == 'equipment' %}selected{% endif %}>Equipos</option>
+                                    <option value="service" {% if supplier and supplier.type == 'service' %}selected{% endif %}>Servicios</option>
+                                </select>
+                                <div class="form-text">Categoría principal del proveedor</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-toggle-on me-1"></i>Estado
+                                </label>
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="active" 
+                                           name="active"
+                                           {% if not supplier or supplier.active %}checked{% endif %}>
+                                    <label class="form-check-label" for="active">
+                                        Proveedor activo
+                                    </label>
+                                </div>
+                                <div class="form-text">Los proveedores inactivos no aparecerán en formularios</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview del proveedor -->
+                    <div class="card bg-light mt-4">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-eye me-2"></i>Vista Previa
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <h6 class="mb-1" id="preview-name">Nombre del proveedor</h6>
+                                    <p class="mb-1 text-muted" id="preview-company">Razón social</p>
+                                    <small class="text-muted">
+                                        <i class="fas fa-phone me-1"></i>
+                                        <span id="preview-phone">Sin teléfono</span> |
+                                        <i class="fas fa-envelope me-1"></i>
+                                        <span id="preview-email">Sin email</span>
+                                    </small>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <div class="mb-2">
+                                        <span class="badge bg-info fs-6" id="preview-type">General</span>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-success" id="preview-status">Activo</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2" id="preview-address" style="display: none;">
+                                <small class="text-muted">
+                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                    <span id="preview-address-text"></span>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botones de acción -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <div>
+                            <a href="{{ url_for('list_suppliers') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                        </div>
+                        <div>
+                            {% if supplier %}
+                                <button type="button" class="btn btn-outline-danger me-2" onclick="deleteSupplier()">
+                                    <i class="fas fa-trash me-2"></i>Eliminar
+                                </button>
+                            {% endif %}
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-{% if supplier %}save{% else %}plus{% endif %} me-2"></i>
+                                {% if supplier %}Actualizar Proveedor{% else %}Crear Proveedor{% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Información adicional -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>Consejos para Proveedores
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-check-circle text-success me-2"></i>Buenas prácticas</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Mantén información de contacto actualizada</li>
+                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Clasifica correctamente el tipo de proveedor</li>
+                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Incluye dirección completa para entregas</li>
+                            <li><i class="fas fa-caret-right me-2 text-primary"></i>Usa nombres comerciales reconocibles</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-info-circle text-info me-2"></i>Tipos de proveedores</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-caret-right me-2 text-info"></i><strong>Alimentos:</strong> Carnes, verduras, abarrotes</li>
+                            <li><i class="fas fa-caret-right me-2 text-info"></i><strong>Bebidas:</strong> Jugos, gaseosas, alcohólicas</li>
+                            <li><i class="fas fa-caret-right me-2 text-info"></i><strong>Equipos:</strong> Cocinas, refrigeradores</li>
+                            <li><i class="fas fa-caret-right me-2 text-info"></i><strong>Servicios:</strong> Limpieza, mantención</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Referencias a elementos
+const nameInput = document.getElementById('name');
+const companyInput = document.getElementById('company');
+const phoneInput = document.getElementById('phone');
+const emailInput = document.getElementById('email');
+const addressInput = document.getElementById('address');
+const typeSelect = document.getElementById('type');
+const activeCheck = document.getElementById('active');
+
+// Preview elements
+const previewName = document.getElementById('preview-name');
+const previewCompany = document.getElementById('preview-company');
+const previewPhone = document.getElementById('preview-phone');
+const previewEmail = document.getElementById('preview-email');
+const previewType = document.getElementById('preview-type');
+const previewStatus = document.getElementById('preview-status');
+const previewAddress = document.getElementById('preview-address');
+const previewAddressText = document.getElementById('preview-address-text');
+
+// Función para actualizar preview
+function updatePreview() {
+    const name = nameInput.value || 'Nombre del proveedor';
+    const company = companyInput.value || 'Razón social';
+    const phone = phoneInput.value || 'Sin teléfono';
+    const email = emailInput.value || 'Sin email';
+    const address = addressInput.value;
+    const type = typeSelect.options[typeSelect.selectedIndex].text;
+    const status = activeCheck.checked ? 'Activo' : 'Inactivo';
+    
+    previewName.textContent = name;
+    previewCompany.textContent = company;
+    previewPhone.textContent = phone;
+    previewEmail.textContent = email;
+    previewType.textContent = type;
+    previewStatus.textContent = status;
+    previewStatus.className = activeCheck.checked ? 'badge bg-success' : 'badge bg-secondary';
+    
+    // Mostrar/ocultar dirección
+    if (address) {
+        previewAddress.style.display = 'block';
+        previewAddressText.textContent = address;
+    } else {
+        previewAddress.style.display = 'none';
+    }
+    
+    // Cambiar color del tipo
+    const typeColors = {
+        'General': 'bg-secondary',
+        'Alimentos': 'bg-success',
+        'Bebidas': 'bg-info',
+        'Equipos': 'bg-warning',
+        'Servicios': 'bg-primary'
+    };
+    previewType.className = `badge fs-6 ${typeColors[type] || 'bg-secondary'}`;
+}
+
+// Event listeners
+nameInput.addEventListener('input', updatePreview);
+companyInput.addEventListener('input', updatePreview);
+phoneInput.addEventListener('input', updatePreview);
+emailInput.addEventListener('input', updatePreview);
+addressInput.addEventListener('input', updatePreview);
+typeSelect.addEventListener('change', updatePreview);
+activeCheck.addEventListener('change', updatePreview);
+
+// Inicializar preview
+updatePreview();
+
+// Validación del formulario
+document.querySelector('form').addEventListener('submit', function(e) {
+    const name = nameInput.value.trim();
+    
+    if (!name) {
+        e.preventDefault();
+        alert('El nombre del proveedor es obligatorio');
+        nameInput.focus();
+        return;
+    }
+    
+    // Validar email si se proporciona
+    const email = emailInput.value.trim();
+    if (email && !email.includes('@')) {
+        e.preventDefault();
+        alert('El formato del email no es válido');
+        emailInput.focus();
+        return;
+    }
+});
+
+// Función para eliminar proveedor
+{% if supplier %}
+function deleteSupplier() {
+    if (confirm('¿Estás seguro de que quieres eliminar este proveedor?\n\nEsta acción no se puede deshacer.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("delete_supplier", supplier_id=supplier.id) }}';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+{% endif %}
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        document.querySelector('form').submit();
+    }
+    
+    if (e.key === 'Escape') {
+        if (confirm('¿Cancelar? Los cambios no guardados se perderán.')) {
+            window.location.href = '{{ url_for("list_suppliers") }}';
+        }
+    }
+});
+
+// Auto-focus
+nameInput.focus();
+</script>
+{% endblock %}

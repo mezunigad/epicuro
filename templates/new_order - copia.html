@@ -72,7 +72,7 @@
                                             <p class="card-text small text-muted flex-grow-1">{{ product.description }}</p>
                                             {% endif %}
                                             <div class="d-flex justify-content-between align-items-center mt-auto">
-                                                <span class="price h5 mb-0 text-success">$<span class="formatted-price">{{ product.price }}</span></span>
+                                                <span class="price h5 mb-0 text-success">${{ "{:,.0f}".format(product.price) }}</span>
                                                 <button type="button" class="btn btn-sm btn-primary">
                                                     <i class="fas fa-plus"></i>
                                                 </button>
@@ -174,9 +174,6 @@
                             <option value="efectivo">Efectivo</option>
                             <option value="tarjeta">Tarjeta</option>
                             <option value="transferencia">Transferencia</option>
-                            <option value="edenred">Edenred</option>
-                            <option value="amipass">Amipass</option>
-                            <option value="pluxee">Pluxee</option>
                         </select>
                     </div>
                     
@@ -370,23 +367,11 @@ let cart = [];
 let currentProduct = null;
 let variationsModal = null;
 
-/**
- * Formatear precio con punto como separador de miles
- */
-function formatPrice(price) {
-    return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-}
-
 // Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
     variationsModal = new bootstrap.Modal(document.getElementById('variationsModal'));
     showCategory('all');
     updateCartDisplay();
-});
-
-document.querySelectorAll('.formatted-price').forEach(priceElement => {
-    const price = parseInt(priceElement.textContent);
-    priceElement.textContent = formatPrice(price);
 });
 
 // ============================================================================
@@ -589,7 +574,7 @@ function updateVariationPrice() {
     });
     
     currentProduct.price = totalPrice;
-    document.getElementById('variation-price').textContent = `$${formatPrice(totalPrice)}`;
+    document.getElementById('variation-price').textContent = `$${totalPrice.toLocaleString()}`;
 }
 
 /**
@@ -748,7 +733,7 @@ function updateCartDisplay() {
                     <div class="flex-grow-1">
                         <div class="d-flex justify-content-between align-items-center">
                             <strong class="text-dark">${item.name}</strong>
-                            <span class="text-success fw-bold">$${formatPrice(item.price)}</span>
+                            <span class="text-success fw-bold">$${item.price.toLocaleString()}</span>
                         </div>
                         ${variationsText}
                         ${notesText}
@@ -767,7 +752,8 @@ function updateCartDisplay() {
                         </button>
                     </div>
                     <div>
-                        <span class="text-muted me-2">$${formatPrice(item.price * item.quantity)}</span>                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${index})" title="Eliminar">
+                        <span class="text-muted me-2">$${(item.price * item.quantity).toLocaleString()}</span>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${index})" title="Eliminar">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -811,9 +797,9 @@ function updateCartTotal() {
     const discount = 0; // Por si quieres agregar descuentos después
     const total = subtotal - discount;
     
-    document.getElementById('subtotal').textContent = `$${formatPrice(subtotal)}`;
-    document.getElementById('discount').textContent = `$${formatPrice(discount)}`;
-    document.getElementById('total').textContent = `$${formatPrice(total)}`;
+    document.getElementById('subtotal').textContent = `${subtotal.toLocaleString()}`;
+    document.getElementById('discount').textContent = `${discount.toLocaleString()}`;
+    document.getElementById('total').textContent = `${total.toLocaleString()}`;
 }
 
 /**
@@ -877,6 +863,39 @@ document.getElementById('searchProducts').focus();
 // FUNCIONES AUXILIARES
 // ============================================================================
 
+/**
+ * Formatear precio para mostrar
+ * @param {number} price - Precio a formatear
+ * @returns {string} Precio formateado con separadores de miles
+ */
+function formatPrice(price) {
+    return `${price.toLocaleString()}`;
+}
+
+/**
+ * Validar que el carrito no esté vacío antes de enviar
+ * @returns {boolean} True si el carrito es válido
+ */
+function validateCart() {
+    return cart.length > 0;
+}
+
+/**
+ * Obtener resumen del carrito para enviar
+ * @returns {Object} Objeto con resumen del carrito
+ */
+function getCartSummary() {
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+    
+    return {
+        items: cart,
+        subtotal: subtotal,
+        totalItems: totalItems,
+        discount: 0,
+        total: subtotal
+    };
+}
 
 </script>
 {% endblock %}

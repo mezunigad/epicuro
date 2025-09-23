@@ -16,10 +16,16 @@
                 </p>
             </div>
             <div class="col-md-6 text-end">
-                <a href="{{ url_for('print_order', order_id=order.id) }}" 
-                   class="btn btn-success me-2" target="_blank" title="Imprimir para cocina">
-                    <i class="fas fa-print me-2"></i>Imprimir Cocina
-                </a>
+                <!-- BOTONES DE IMPRESIÓN LIMPIOS -->
+                <button onclick="printKitchenTicket({{ order.id }})" 
+                        class="btn btn-success me-2" title="Imprimir Ticket Cocina">
+                    <i class="fas fa-print me-2"></i>Ticket Cocina
+                </button>
+                <button onclick="printCustomerBill({{ order.id }})" 
+                        class="btn btn-info me-2" title="Imprimir Cuenta Cliente">
+                    <i class="fas fa-receipt me-2"></i>Cuenta Cliente
+                </button>
+                
                 <a href="{{ url_for('edit_order', order_id=order.id) }}" 
                    class="btn btn-warning me-2" title="Editar orden">
                     <i class="fas fa-edit me-2"></i>Editar
@@ -296,12 +302,20 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ url_for('print_order', order_id=order.id) }}" 
-                       class="btn btn-success" target="_blank">
-                        <i class="fas fa-print me-2"></i>Imprimir para Cocina
-                    </a>
+                    <!-- BOTONES DE IMPRESIÓN EN ACCIONES RÁPIDAS -->
+                    <button onclick="printKitchenTicket({{ order.id }})" 
+                            class="btn btn-success">
+                        <i class="fas fa-print me-2"></i>Imprimir Ticket Cocina
+                    </button>
                     
-                    <button type="button" class="btn btn-info" onclick="duplicateOrder()">
+                    <button onclick="printCustomerBill({{ order.id }})" 
+                            class="btn btn-info">
+                        <i class="fas fa-receipt me-2"></i>Imprimir Cuenta Cliente
+                    </button>
+                    
+                    <hr>
+                    
+                    <button type="button" class="btn btn-secondary" onclick="duplicateOrder()">
                         <i class="fas fa-copy me-2"></i>Duplicar Orden
                     </button>
                     
@@ -396,6 +410,21 @@
 
 {% block extra_js %}
 <script>
+// FUNCIONES DE IMPRESIÓN
+function printKitchenTicket(orderId) {
+    const printWindow = window.open(`/kitchen-ticket/${orderId}`, '_blank');
+    printWindow.onload = function() {
+        printWindow.print();
+    };
+}
+
+function printCustomerBill(orderId) {
+    const printWindow = window.open(`/customer-bill/${orderId}`, '_blank');
+    printWindow.onload = function() {
+        printWindow.print();
+    };
+}
+
 // Función para calcular tiempo transcurrido
 function updateElapsedTime() {
     {% if order.created_at %}
@@ -432,7 +461,6 @@ function updateElapsedTime() {
 // Función para duplicar orden
 function duplicateOrder() {
     if (confirm('¿Crear una nueva orden con los mismos productos?')) {
-        // Redireccionar a nueva orden con parámetros de la orden actual
         const params = new URLSearchParams({
             duplicate: {{ order.id }},
             customer_name: '{{ order.customer_name or "" }}',
@@ -459,18 +487,26 @@ function confirmDelete() {
 
 // Atajos de teclado
 document.addEventListener('keydown', function(e) {
+    // K para ticket cocina
+    if (e.key === 'k' || e.key === 'K') {
+        if (!e.ctrlKey && !e.altKey) {
+            e.preventDefault();
+            printKitchenTicket({{ order.id }});
+        }
+    }
+    
+    // C para cuenta cliente
+    if (e.key === 'c' || e.key === 'C') {
+        if (!e.ctrlKey && !e.altKey) {
+            e.preventDefault();
+            printCustomerBill({{ order.id }});
+        }
+    }
+    
     // E para editar
     if (e.key === 'e' || e.key === 'E') {
         if (!e.ctrlKey && !e.altKey) {
             window.location.href = '{{ url_for("edit_order", order_id=order.id) }}';
-        }
-    }
-    
-    // P para imprimir
-    if (e.key === 'p' || e.key === 'P') {
-        if (!e.ctrlKey && !e.altKey) {
-            e.preventDefault();
-            window.open('{{ url_for("print_order", order_id=order.id) }}', '_blank');
         }
     }
     

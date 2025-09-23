@@ -69,7 +69,7 @@
                 </div>
 
                 <!-- Formulario Principal -->
-                <form method="post" class="needs-validation" novalidate>
+                <form method="POST" action="{% if product %}{{ url_for('update_product', product_id=product.id) }}{% else %}{{ url_for('create_product') }}{% endif %}" class="needs-validation" novalidate>
                     <div class="row">
                         <!-- Información Básica -->
                         <div class="col-lg-8">
@@ -471,8 +471,7 @@
         function deleteProduct() {
             if (confirm('¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer.')) {
                 // Implementar eliminación
-                window.location.href = '{{ url_for("delete_product", id=product.id) if product else "#" }}';
-            }
+                window.location.href = '{{ url_for("delete_product", product_id=product.id) if product else "#" }}';            }
         }
 
         // Validación del formulario

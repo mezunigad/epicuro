@@ -181,11 +181,12 @@
                                        title="Ver detalles">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <button class="btn btn-sm btn-outline-secondary" 
-                                            onclick="printOrder({{ order.id }})"
-                                            title="Imprimir">
+                                    <a href="{{ url_for('print_customer_bill', order_id=order.id) }}" 
+                                       class="btn btn-sm btn-outline-secondary" 
+                                       target="_blank"
+                                       title="Imprimir cuenta cliente">
                                         <i class="fas fa-print"></i>
-                                    </button>
+                                    </a>
                                 </div>
                             </td>
                         </tr>
@@ -239,27 +240,123 @@ let currentOrderId = null;
 let currentStatus = null;
 
 function updateStatus(orderId, newStatus) {
-    currentOrderId = orderId;
-    currentStatus = newStatus;
+    // Mostrar indicador de carga en el botón
+    const statusButton = document.querySelector(`tr:has([onclick*="${orderId}"]) .dropdown-toggle`);
+    const originalText = statusButton.innerHTML;
+    statusButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Actualizando...';
+    statusButton.disabled = true;
     
-    // Crear y enviar formulario directamente
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `/orders/${orderId}/update_status`;
-    
-    const statusInput = document.createElement('input');
-    statusInput.type = 'hidden';
-    statusInput.name = 'status';
-    statusInput.value = newStatus;
-    
-    form.appendChild(statusInput);
-    document.body.appendChild(form);
-    form.submit();
+    // Enviar petición AJAX
+    fetch(`/orders/${orderId}/update_status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `status=${newStatus}`
+    })
+    .then(response => {
+        if (response.ok) {
+            // Actualizar el botón de estado dinámicamente
+            updateStatusButton(orderId, newStatus);
+            
+            // Mostrar mensaje de éxito temporal
+            showStatusMessage('Estado actualizado correctamente', 'success');
+        } else {
+            throw new Error('Error al actualizar el estado');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showStatusMessage('Error al actualizar el estado', 'error');
+        
+        // Restaurar botón original en caso de error
+        statusButton.innerHTML = originalText;
+        statusButton.disabled = false;
+    });
 }
 
-function printOrder(orderId) {
-    // Abrir la orden en una nueva ventana para imprimir
-    window.open(`/orders/${orderId}?print=1`, '_blank');
+function updateStatusButton(orderId, newStatus) {
+    // Encontrar la fila de la orden
+    const row = document.querySelector(`tr:has([onclick*="${orderId}"])`);
+    const statusCell = row.querySelector('.dropdown');
+    const statusButton = statusCell.querySelector('.dropdown-toggle');
+    
+    // Configuraciones de estado
+    const statusConfig = {
+        'pending': {
+            class: 'btn-warning',
+            icon: 'fa-clock',
+            text: 'Pendiente'
+        },
+        'preparing': {
+            class: 'btn-info',
+            icon: 'fa-utensils',
+            text: 'Preparando'
+        },
+        'ready': {
+            class: 'btn-success',
+            icon: 'fa-check',
+            text: 'Listo'
+        },
+        'completed': {
+            class: 'btn-primary',
+            icon: 'fa-check-double',
+            text: 'Completado'
+        },
+        'cancelled': {
+            class: 'btn-danger',
+            icon: 'fa-times',
+            text: 'Cancelado'
+        }
+    };
+    
+    const config = statusConfig[newStatus] || {
+        class: 'btn-secondary',
+        icon: 'fa-question',
+        text: newStatus
+    };
+    
+    // Actualizar clases del botón
+    statusButton.className = `btn btn-sm dropdown-toggle ${config.class}`;
+    statusButton.innerHTML = `<i class="fas ${config.icon} me-1"></i>${config.text}`;
+    statusButton.disabled = false;
+    
+    // AGREGAR ESTAS LÍNEAS PARA CERRAR EL DROPDOWN
+    const dropdown = bootstrap.Dropdown.getInstance(statusButton);
+    if (dropdown) {
+        dropdown.hide();
+    }
+    
+    // Alternativa si no funciona la línea anterior:
+    // statusButton.click(); // Esto togglea el dropdown para cerrarlo
+    // statusButton.blur(); // Quita el foco del botón
+}
+
+
+function showStatusMessage(message, type) {
+    // Crear elemento de notificación
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+    alert.style.position = 'fixed';
+    alert.style.top = '20px';
+    alert.style.right = '20px';
+    alert.style.zIndex = '9999';
+    alert.style.minWidth = '300px';
+    
+    alert.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    
+    document.body.appendChild(alert);
+    
+    // Auto-remover después de 3 segundos
+    setTimeout(() => {
+        if (alert.parentElement) {
+            alert.remove();
+        }
+    }, 3000);
 }
 
 // Auto-refresh cada 30 segundos para comandas en tiempo real

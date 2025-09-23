@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+
+{% block title %}Compras - Epicuro{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-shopping-cart me-3"></i>
+                    Gestión de Compras
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">Control de compras y recepción de mercancía</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('new_purchase') }}" class="btn btn-light btn-lg">>
+                    <i class="fas fa-plus-circle me-2"></i>
+                    Nueva Compra
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">
+                    <i class="fas fa-search me-1"></i>Buscar
+                </label>
+                <input type="text" class="form-control" id="search-purchases" placeholder="Buscar compras...">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">
+                    <i class="fas fa-filter me-1"></i>Estado
+                </label>
+                <select class="form-select" id="filter-status">
+                    <option value="">Todos</option>
+                    <option value="pending">Pendiente</option>
+                    <option value="received">Recibida</option>
+                    <option value="cancelled">Cancelada</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">
+                    <i class="fas fa-truck me-1"></i>Proveedor
+                </label>
+                <select class="form-select" id="filter-supplier">
+                    <option value="">Todos</option>
+                    <!-- Suppliers will be populated dynamically -->
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="button" class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                    <i class="fas fa-times me-1"></i>Limpiar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de compras -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list me-2"></i>
+            Lista de Compras
+        </h5>
+        <span class="badge bg-primary" id="purchases-count">{{ purchases|length if purchases else 0 }} compras</span>
+    </div>
+    <div class="card-body p-0">
+        {% if purchases %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="purchases-table">
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th>Proveedor</th>
+                            <th>Fecha</th>
+                            <th>Fecha Esperada</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for purchase in purchases %}
+                        <tr class="purchase-row" 
+                            data-number="{{ purchase.purchase_number.lower() if purchase.purchase_number else '' }}"
+                            data-supplier="{{ purchase.supplier_name.lower() if purchase.supplier_name else '' }}"
+                            data-status="{{ purchase.status or 'pending' }}">
+                            <td>
+                                <strong>{{ purchase.purchase_number or 'Sin número' }}</strong>
+                            </td>
+                            <td>
+                                {% if purchase.supplier_name %}
+                                    <span class="badge bg-info">{{ purchase.supplier_name }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Sin proveedor</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if purchase.purchase_date %}
+                                    {{ purchase.purchase_date.strftime('%d/%m/%Y') if purchase.purchase_date.strftime else purchase.purchase_date }}
+                                {% else %}
+                                    <span class="text-muted">No especificada</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if purchase.expected_date %}
+                                    {{ purchase.expected_date.strftime('%d/%m/%Y') if purchase.expected_date.strftime else purchase.expected_date }}
+                                {% else %}
+                                    <span class="text-muted">No especificada</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if purchase.total_amount %}
+                                    <strong class="text-success">${{ "{:,.0f}".format(purchase.total_amount) }}</strong>
+                                {% else %}
+                                    <span class="text-muted">$0</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set status = purchase.status or 'pending' %}
+                                {% if status == 'pending' %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-clock me-1"></i>Pendiente
+                                    </span>
+                                {% elif status == 'received' %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>Recibida
+                                    </span>
+                                {% elif status == 'cancelled' %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-times me-1"></i>Cancelada
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-question me-1"></i>{{ status.title() }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick="viewPurchase({{ purchase.id }})"
+                                            title="Ver detalles">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    {% if status == 'pending' %}
+                                    <button class="btn btn-sm btn-outline-success" 
+                                            onclick="receivePurchase({{ purchase.id }})"
+                                            title="Marcar como recibida">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    {% endif %}
+                                    <a href="{{ url_for('edit_purchase', purchase_id=purchase.id) }}" 
+                                       class="btn btn-sm btn-outline-secondary" 
+                                       title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            onclick="deletePurchase({{ purchase.id }})"
+                                            title="Eliminar">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-shopping-cart fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">No hay compras registradas</h4>
+                <p class="text-muted">Comienza registrando tu primera compra</p>
+                <a href="{{ url_for('new_purchase') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Registrar Primera Compra
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal para ver detalles de compra -->
+<div class="modal fade" id="viewPurchaseModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye me-2"></i>Detalles de Compra
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="purchase-details-loading" class="text-center py-4">
+                    <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                    <p class="mt-2">Cargando detalles...</p>
+                </div>
+                <div id="purchase-details-content"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para recibir compra -->
+<div class="modal fade" id="receivePurchaseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-check me-2"></i>Recibir Compra
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="receive-purchase-form">
+                <div class="modal-body">
+                    <input type="hidden" name="purchase_id" id="receive-purchase-id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Compra:</label>
+                        <strong id="receive-purchase-number"></strong>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="received_date" class="form-label">
+                            <i class="fas fa-calendar me-1"></i>Fecha de Recepción
+                        </label>
+                        <input type="date" 
+                               class="form-control" 
+                               id="received_date" 
+                               name="received_date" 
+                               value="{{ 'now'|dateformat('%Y-%m-%d') if 'now'|dateformat else '' }}"
+                               required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="receive_notes" class="form-label">
+                            <i class="fas fa-sticky-note me-1"></i>Notas de Recepción
+                        </label>
+                        <textarea class="form-control" 
+                                  id="receive_notes" 
+                                  name="notes" 
+                                  rows="3"
+                                  placeholder="Notas sobre la recepción, estado de productos, etc."></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Al marcar como recibida, se actualizará automáticamente el stock de los ingredientes.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check me-2"></i>Confirmar Recepción
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Función para ver detalles de compra
+function viewPurchase(purchaseId) {
+    const modal = new bootstrap.Modal(document.getElementById('viewPurchaseModal'));
+    modal.show();
+    
+    // Mostrar loading
+    document.getElementById('purchase-details-loading').style.display = 'block';
+    document.getElementById('purchase-details-content').innerHTML = '';
+    
+    // Cargar detalles via API
+    fetch(`/api/purchases/${purchaseId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('purchase-details-loading').style.display = 'none';
+            
+            if (data.success) {
+                let detailsHtml = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Información General</h6>
+                            <p><strong>Número:</strong> ${data.purchase.purchase_number || 'Sin número'}</p>
+                            <p><strong>Proveedor:</strong> ${data.purchase.supplier_name || 'Sin proveedor'}</p>
+                            <p><strong>Fecha:</strong> ${data.purchase.purchase_date || 'No especificada'}</p>
+                            <p><strong>Estado:</strong> ${data.purchase.status || 'Pendiente'}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Montos</h6>
+                            <p><strong>Total:</strong> $${data.purchase.total_amount ? data.purchase.total_amount.toLocaleString() : '0'}</p>
+                            ${data.purchase.notes ? `<p><strong>Notas:</strong> ${data.purchase.notes}</p>` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                if (data.items && data.items.length > 0) {
+                    detailsHtml += `
+                        <h6 class="mt-3">Productos</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Cantidad</th>
+                                        <th>Precio Unitario</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    data.items.forEach(item => {
+                        detailsHtml += `
+                            <tr>
+                                <td>${item.product_name}</td>
+                                <td>${item.quantity} ${item.unit}</td>
+                                <td>$${item.unit_price ? item.unit_price.toLocaleString() : '0'}</td>
+                                <td>$${item.total_price ? item.total_price.toLocaleString() : '0'}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    detailsHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('purchase-details-content').innerHTML = detailsHtml;
+            } else {
+                document.getElementById('purchase-details-content').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Error al cargar detalles: ${data.message || 'Error desconocido'}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            document.getElementById('purchase-details-loading').style.display = 'none';
+            document.getElementById('purchase-details-content').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error de conexión: ${error.message}
+                </div>
+            `;
+        });
+}
+
+// Función para recibir compra
+function receivePurchase(purchaseId) {
+    // Configurar el formulario con la URL correcta
+    const form = document.getElementById('receive-purchase-form');
+    form.action = `/inventory/purchases/${purchaseId}/receive`;
+    
+    // Configurar los datos del modal
+    document.getElementById('receive-purchase-id').value = purchaseId;
+    document.getElementById('receive-purchase-number').textContent = `Compra #${purchaseId}`;
+    
+    // Establecer fecha actual
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('received_date').value = today;
+    
+    const modal = new bootstrap.Modal(document.getElementById('receivePurchaseModal'));
+    modal.show();
+}
+
+// Función para eliminar compra
+function deletePurchase(purchaseId) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta compra?\n\nEsta acción no se puede deshacer.')) {
+        // Crear formulario para envío POST en lugar de usar fetch
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/inventory/purchases/${purchaseId}/delete`;
+        form.style.display = 'none';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Filtros y búsqueda
+document.getElementById('search-purchases').addEventListener('input', filterPurchases);
+document.getElementById('filter-status').addEventListener('change', filterPurchases);
+document.getElementById('filter-supplier').addEventListener('change', filterPurchases);
+
+function filterPurchases() {
+    const searchTerm = document.getElementById('search-purchases').value.toLowerCase();
+    const statusFilter = document.getElementById('filter-status').value;
+    const supplierFilter = document.getElementById('filter-supplier').value;
+    
+    const rows = document.querySelectorAll('.purchase-row');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        const number = row.dataset.number;
+        const supplier = row.dataset.supplier;
+        const status = row.dataset.status;
+        
+        const matchesSearch = number.includes(searchTerm) || supplier.includes(searchTerm);
+        const matchesStatus = !statusFilter || status === statusFilter;
+        const matchesSupplier = !supplierFilter || supplier.includes(supplierFilter.toLowerCase());
+        
+        if (matchesSearch && matchesStatus && matchesSupplier) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Actualizar contador
+    document.getElementById('purchases-count').textContent = `${visibleCount} compras`;
+}
+
+function clearFilters() {
+    document.getElementById('search-purchases').value = '';
+    document.getElementById('filter-status').value = '';
+    document.getElementById('filter-supplier').value = '';
+    filterPurchases();
+}
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    // Ctrl+F para buscar
+    if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        document.getElementById('search-purchases').focus();
+    }
+    
+    // Ctrl+N para nueva compra
+    if (e.ctrlKey && e.key === 'n') {
+        e.preventDefault();
+        window.location.href = '{{ url_for("new_purchase") }}';
+    }
+});
+
+// Focus en búsqueda al cargar
+document.getElementById('search-purchases').focus();
+</script>
+{% endblock %}

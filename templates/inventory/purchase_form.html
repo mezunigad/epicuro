@@ -1,0 +1,560 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if purchase %}Editar Compra{% else %}Nueva Compra{% endif %} - Epicuro
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-0">
+                    <i class="fas fa-{% if purchase %}edit{% else %}plus-circle{% endif %} me-3"></i>
+                    {% if purchase %}Editar Compra{% else %}Nueva Compra{% endif %}
+                </h1>
+                <p class="mb-0 mt-2 opacity-75">
+                    {% if purchase %}Modifica los datos de la compra{% else %}Registra una nueva compra de ingredientes{% endif %}
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('list_purchases') }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left me-2"></i>Volver a Compras
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Información de la Compra
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{% if purchase %}{{ url_for('update_purchase', purchase_id=purchase.id) }}{% else %}{{ url_for('create_purchase') }}{% endif %}">
+                    <!-- Información básica -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="purchase_number" class="form-label">
+                                    <i class="fas fa-hashtag me-1"></i>Número de Compra *
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="purchase_number" 
+                                       name="purchase_number" 
+                                       value="{{ purchase.purchase_number if purchase else '' }}"
+                                       placeholder="Ej: COM-001, FAC-2024-001"
+                                       required 
+                                       autocomplete="off">
+                                <div class="form-text">Número identificador de la compra</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="supplier_id" class="form-label">
+                                    <i class="fas fa-truck me-1"></i>Proveedor
+                                </label>
+                                <select class="form-select" id="supplier_id" name="supplier_id">
+                                    <option value="">Sin proveedor específico</option>
+                                    {% for supplier in suppliers %}
+                                    <option value="{{ supplier.id }}" 
+                                            {% if purchase and purchase.supplier_id == supplier.id %}selected{% endif %}>
+                                        {{ supplier.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    Proveedor de esta compra
+                                    <a href="#" class="ms-2" onclick="alert('Función en desarrollo')">
+                                        <i class="fas fa-plus"></i> Nuevo proveedor
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="purchase_date" class="form-label">
+                                    <i class="fas fa-calendar me-1"></i>Fecha de Compra *
+                                </label>
+                                <input type="date" 
+                                       class="form-control" 
+                                       id="purchase_date" 
+                                       name="purchase_date" 
+                                       value="{{ purchase.purchase_date if purchase else '' }}"
+                                       required>
+                                <div class="form-text">Fecha en que se realizó la compra</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="expected_date" class="form-label">
+                                    <i class="fas fa-clock me-1"></i>Fecha Esperada de Entrega
+                                </label>
+                                <input type="date" 
+                                       class="form-control" 
+                                       id="expected_date" 
+                                       name="expected_date" 
+                                       value="{{ purchase.expected_date if purchase else '' }}">
+                                <div class="form-text">Fecha esperada de recepción</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Ingredientes/Items -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-shopping-cart me-2"></i>
+                                Items de la Compra
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="items-container">
+                                {% if purchase_items %}
+                                    {% for item in purchase_items %}
+                                    <div class="item-row mb-3">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
+                                                <select class="form-select ingredient-select" name="ingredient_id[]" onchange="updateIngredientUnit(this)" required>
+                                                    <option value="">Selecciona ingrediente</option>
+                                                    {% for ingredient in ingredients %}
+                                                    <option value="{{ ingredient.id }}" 
+                                                            data-unit="{{ ingredient.unit }}"
+                                                            {% if item.ingredient_id == ingredient.id %}selected{% endif %}>
+                                                        {{ ingredient.name }}
+                                                    </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <input type="number" 
+                                                       class="form-control quantity-input" 
+                                                       name="quantity[]" 
+                                                       placeholder="Cantidad"
+                                                       value="{{ item.quantity }}"
+                                                       step="0.001"
+                                                       oninput="calculateItemTotal(this)"
+                                                       required>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <select class="form-select unit-select" name="unit[]">
+                                                    <option value="kg" {% if item.unit == 'kg' %}selected{% endif %}>kg</option>
+                                                    <option value="gr" {% if item.unit == 'gr' %}selected{% endif %}>gr</option>
+                                                    <option value="litro" {% if item.unit == 'litro' %}selected{% endif %}>litro</option>
+                                                    <option value="cc" {% if item.unit == 'cc' %}selected{% endif %}>cc</option>
+                                                    <option value="unidad" {% if item.unit == 'unidad' %}selected{% endif %}>unidad</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <input type="number" 
+                                                       class="form-control price-input" 
+                                                       name="unit_price[]" 
+                                                       placeholder="Precio neto"
+                                                       value="{{ item.unit_price }}"
+                                                       step="0.01"
+                                                       oninput="calculateItemTotal(this)">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="text" 
+                                                           class="form-control item-total" 
+                                                           placeholder="Total"
+                                                           readonly>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-1">
+                                                <button type="button" 
+                                                        class="btn btn-outline-danger btn-sm"
+                                                        onclick="removeItem(this)">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="item-row mb-3">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
+                                                <select class="form-select ingredient-select" name="ingredient_id[]" onchange="updateIngredientUnit(this)" required>
+                                                    <option value="">Selecciona ingrediente</option>
+                                                    {% for ingredient in ingredients %}
+                                                    <option value="{{ ingredient.id }}" data-unit="{{ ingredient.unit }}">
+                                                        {{ ingredient.name }}
+                                                    </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <input type="number" 
+                                                       class="form-control quantity-input" 
+                                                       name="quantity[]" 
+                                                       placeholder="Cantidad"
+                                                       step="0.001"
+                                                       oninput="calculateItemTotal(this)"
+                                                       required>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <select class="form-select unit-select" name="unit[]">
+                                                    <option value="kg">kg</option>
+                                                    <option value="gr">gr</option>
+                                                    <option value="litro">litro</option>
+                                                    <option value="cc">cc</option>
+                                                    <option value="unidad">unidad</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <input type="number" 
+                                                       class="form-control price-input" 
+                                                       name="unit_price[]" 
+                                                       placeholder="Precio neto"
+                                                       step="0.01"
+                                                       oninput="calculateItemTotal(this)">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="text" 
+                                                           class="form-control item-total" 
+                                                           placeholder="Total"
+                                                           readonly>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-1">
+                                                <button type="button" 
+                                                        class="btn btn-outline-danger btn-sm"
+                                                        onclick="removeItem(this)">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <button type="button" 
+                                    class="btn btn-outline-primary btn-sm mt-2"
+                                    onclick="addItem()">
+                                <i class="fas fa-plus me-2"></i>Agregar Item
+                            </button>
+                            
+                            <!-- Total de la compra -->
+                            <div class="card bg-light mt-4">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>Resumen de la Compra</h6>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span>Subtotal (Neto):</span>
+                                                <span id="purchase-subtotal" class="fw-bold">$0</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-2">
+                                                <span>IVA (19%):</span>
+                                                <span id="purchase-iva" class="fw-bold">$0</span>
+                                            </div>
+                                            <hr>
+                                            <div class="d-flex justify-content-between">
+                                                <span><strong>Total:</strong></span>
+                                                <span id="purchase-total" class="fw-bold text-success h5">$0</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Los precios ingresados deben ser valores netos (sin IVA).
+                                                El IVA del 19% se calculará automáticamente.
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Notas -->
+                    <div class="mb-3 mt-4">
+                        <label for="notes" class="form-label">
+                            <i class="fas fa-sticky-note me-1"></i>Notas
+                        </label>
+                        <textarea class="form-control" 
+                                  id="notes" 
+                                  name="notes" 
+                                  rows="3"
+                                  placeholder="Notas adicionales sobre la compra...">{{ purchase.notes if purchase else '' }}</textarea>
+                    </div>
+                    
+                    <!-- Botones de acción -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <div>
+                            <a href="{{ url_for('list_purchases') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                        </div>
+                        <div>
+                            {% if purchase %}
+                                <button type="button" class="btn btn-outline-danger me-2" onclick="deletePurchase()">
+                                    <i class="fas fa-trash me-2"></i>Eliminar
+                                </button>
+                            {% endif %}
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-{% if purchase %}save{% else %}plus{% endif %} me-2"></i>
+                                {% if purchase %}Actualizar Compra{% else %}Crear Compra{% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Función para agregar nuevo item
+function addItem() {
+    const container = document.getElementById('items-container');
+    const template = `
+        <div class="item-row mb-3">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <select class="form-select ingredient-select" name="ingredient_id[]" onchange="updateIngredientUnit(this)" required>
+                        <option value="">Selecciona ingrediente</option>
+                        {% for ingredient in ingredients %}
+                        <option value="{{ ingredient.id }}" data-unit="{{ ingredient.unit }}">
+                            {{ ingredient.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" 
+                           class="form-control quantity-input" 
+                           name="quantity[]" 
+                           placeholder="Cantidad"
+                           step="0.001"
+                           oninput="calculateItemTotal(this)"
+                           required>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select unit-select" name="unit[]">
+                        <option value="kg">kg</option>
+                        <option value="gr">gr</option>
+                        <option value="litro">litro</option>
+                        <option value="cc">cc</option>
+                        <option value="unidad">unidad</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" 
+                           class="form-control price-input" 
+                           name="unit_price[]" 
+                           placeholder="Precio neto"
+                           step="0.01"
+                           oninput="calculateItemTotal(this)">
+                </div>
+                <div class="col-md-2">
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="text" 
+                               class="form-control item-total" 
+                               placeholder="Total"
+                               readonly>
+                    </div>
+                </div>
+                <div class="col-md-1">
+                    <button type="button" 
+                            class="btn btn-outline-danger btn-sm"
+                            onclick="removeItem(this)">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', template);
+    calculateTotals();
+}
+
+// Función para eliminar item
+function removeItem(button) {
+    const itemRow = button.closest('.item-row');
+    const container = document.getElementById('items-container');
+    
+    if (container.querySelectorAll('.item-row').length > 1) {
+        itemRow.remove();
+        calculateTotals();
+    } else {
+        alert('Debe mantener al menos un item en la compra');
+    }
+}
+
+// Función para actualizar unidad del ingrediente
+function updateIngredientUnit(selectElement) {
+    const row = selectElement.closest('.item-row');
+    const unitSelect = row.querySelector('.unit-select');
+    const selectedOption = selectElement.options[selectElement.selectedIndex];
+    
+    if (selectedOption.dataset.unit && unitSelect) {
+        unitSelect.value = selectedOption.dataset.unit;
+    }
+}
+
+// Función para calcular total de un item
+function calculateItemTotal(inputElement) {
+    const row = inputElement.closest('.item-row');
+    const quantityInput = row.querySelector('.quantity-input');
+    const priceInput = row.querySelector('.price-input');
+    const totalInput = row.querySelector('.item-total');
+    
+    const quantity = parseFloat(quantityInput.value) || 0;
+    const price = parseFloat(priceInput.value) || 0;
+    const total = quantity * price;
+    
+    totalInput.value = formatCurrency(total);
+    calculateTotals();
+}
+
+// Función para calcular totales generales
+function calculateTotals() {
+    let subtotal = 0;
+    
+    document.querySelectorAll('.item-row').forEach(row => {
+        const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
+        const price = parseFloat(row.querySelector('.price-input').value) || 0;
+        subtotal += quantity * price;
+    });
+    
+    const iva = subtotal * 0.19;
+    const total = subtotal + iva;
+    
+    // Actualizar elementos en el DOM
+    const subtotalElement = document.getElementById('purchase-subtotal');
+    const ivaElement = document.getElementById('purchase-iva');
+    const totalElement = document.getElementById('purchase-total');
+    
+    if (subtotalElement) subtotalElement.textContent = formatCurrency(subtotal);
+    if (ivaElement) ivaElement.textContent = formatCurrency(iva);
+    if (totalElement) totalElement.textContent = formatCurrency(total);
+}
+
+// Función para formatear moneda
+function formatCurrency(amount) {
+    return '$' + Math.round(amount).toLocaleString('es-CL');
+}
+
+// Inicializar cuando carga la página
+document.addEventListener('DOMContentLoaded', function() {
+    // Calcular totales iniciales
+    calculateTotals();
+    
+    // Establecer fecha actual si está vacía
+    const purchaseDateInput = document.getElementById('purchase_date');
+    if (purchaseDateInput && !purchaseDateInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        purchaseDateInput.value = today;
+    }
+    
+    // Generar número automático si está vacío
+    const purchaseNumberInput = document.getElementById('purchase_number');
+    if (purchaseNumberInput && !purchaseNumberInput.value) {
+        const today = new Date();
+        const dateStr = today.getFullYear().toString() + 
+                       (today.getMonth() + 1).toString().padStart(2, '0') + 
+                       today.getDate().toString().padStart(2, '0');
+        purchaseNumberInput.value = 'COM-' + dateStr + '-001';
+    }
+    
+    // Auto-focus
+    if (purchaseNumberInput) {
+        purchaseNumberInput.focus();
+    }
+});
+
+// Validación del formulario
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const purchaseNumber = document.getElementById('purchase_number').value.trim();
+            const purchaseDate = document.getElementById('purchase_date').value;
+            const itemSelects = document.querySelectorAll('select[name="ingredient_id[]"]');
+            
+            if (!purchaseNumber) {
+                e.preventDefault();
+                alert('El número de compra es obligatorio');
+                document.getElementById('purchase_number').focus();
+                return;
+            }
+            
+            if (!purchaseDate) {
+                e.preventDefault();
+                alert('La fecha de compra es obligatoria');
+                document.getElementById('purchase_date').focus();
+                return;
+            }
+            
+            // Verificar que hay al menos un item seleccionado
+            let hasItems = false;
+            itemSelects.forEach(select => {
+                if (select.value) {
+                    hasItems = true;
+                }
+            });
+            
+            if (!hasItems) {
+                e.preventDefault();
+                alert('Debe agregar al menos un item a la compra');
+                return;
+            }
+        });
+    }
+});
+
+// Función para eliminar compra
+{% if purchase %}
+function deletePurchase() {
+    if (confirm('¿Estás seguro de que quieres eliminar esta compra?\n\nEsta acción no se puede deshacer.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("delete_purchase", purchase_id=purchase.id) }}';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+{% endif %}
+
+// Atajos de teclado
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        document.querySelector('form').submit();
+    }
+    
+    if (e.key === 'Escape') {
+        if (confirm('¿Cancelar? Los cambios no guardados se perderán.')) {
+            window.location.href = '{{ url_for("list_purchases") }}';
+        }
+    }
+    
+    // Ctrl+I para agregar item
+    if (e.ctrlKey && e.key === 'i') {
+        e.preventDefault();
+        addItem();
+    }
+});
+</script>
+{% endblock %}

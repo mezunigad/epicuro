@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Cocina - {{ order.order_number }}</title>
+    <style>
+        @page {
+            size: 80mm auto;
+            margin: 0;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 11pt;
+            font-weight: bold;
+            line-height: 1.1;
+            width: 80mm;
+            padding: 2mm;
+            background: white;
+            color: black;
+        }
+        
+        .ticket {
+            width: 76mm;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            border-bottom: 2px solid black;
+            padding-bottom: 2mm;
+            margin-bottom: 3mm;
+        }
+        
+        .restaurant {
+            font-size: 16pt;
+            margin-bottom: 1mm;
+        }
+        
+        .type {
+            font-size: 12pt;
+            border: 2px solid black;
+            padding: 2mm;
+        }
+        
+        /* Order info */
+        .order {
+            text-align: center;
+            font-size: 12pt;
+            border: 3px solid black;
+            padding: 3mm;
+            margin-bottom: 3mm;
+        }
+        
+        .info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9pt;
+            margin-bottom: 3mm;
+            border-bottom: 1px solid black;
+            padding-bottom: 2mm;
+        }
+        
+        /* Items */
+        .item {
+            border: 2px solid black;
+            padding: 2mm;
+            margin-bottom: 2mm;
+        }
+        
+        .item-line {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1mm;
+        }
+        
+        .qty {
+            border: 3px solid black;
+            background: white;
+            color: black;
+            padding: 2mm;
+            font-size: 16pt;
+            font-weight: bold;
+            margin-right: 3mm;
+            width: 12mm;
+            text-align: center;
+        }
+        
+        .name {
+            font-size: 12pt;
+            text-transform: uppercase;
+        }
+        
+        .variations {
+            border-left: 3px solid black;
+            padding-left: 2mm;
+            margin: 1mm 0;
+            font-size: 10pt;
+        }
+        
+        .notes {
+            border: 2px dashed black;
+            padding: 2mm;
+            margin-top: 1mm;
+            font-size: 10pt;
+            text-align: center;
+        }
+        
+        /* Service type */
+        .service {
+            text-align: center;
+            font-size: 14pt;
+            border: 3px solid black;
+            padding: 3mm;
+            margin: 3mm 0;
+        }
+        
+        /* General notes */
+        .general {
+            border: 2px dashed black;
+            padding: 2mm;
+            margin: 2mm 0;
+            font-size: 10pt;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            border-top: 2px solid black;
+            padding-top: 2mm;
+            margin-top: 3mm;
+            font-size: 9pt;
+        }
+        
+        /* Print */
+        @media print {
+            body { padding: 1mm; }
+            .no-print { display: none !important; }
+            * { page-break-inside: avoid !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ticket">
+        <!-- Header -->
+        <div class="header">
+            <div class="restaurant">EPICURO</div>
+            <div class="type">COCINA</div>
+        </div>
+        
+        <!-- Order -->
+        <div class="order">#{{ order.order_number or order.id }}</div>
+        
+        <!-- Info -->
+        <div class="info">
+            <div>{{ order.created_at|dateformat('%d/%m %H:%M') }}</div>
+            {% if order.customer_name %}
+            <div>{{ order.customer_name[:15] }}</div>
+            {% endif %}
+        </div>
+        
+        <!-- Items -->
+        {% for item in order_items %}
+        <div class="item">
+            <div class="item-line">
+                <div class="qty">{{ item.quantity }}</div>
+                <div class="name">{{ item.product_name }}</div>
+            </div>
+            
+            {% if item.selected_variations %}
+            <div class="variations">
+                {% set variations = item.selected_variations.split(' | ') %}
+                {% for variation in variations %}
+                {% if variation.strip() %}
+                {{ variation.strip() }}<br>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            {% if item.item_notes %}
+            <div class="notes">{{ item.item_notes }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+		
+         <!-- General notes -->
+        {% if order.notes %}
+        <div class="general">{{ order.notes }}</div>
+        {% endif %}
+        
+        <!-- Service -->
+        <div class="service">
+            {% if order.order_type == 'takeaway' %}LLEVAR{% else %}MESA{% endif %}
+        </div>
+        
+       
+        <!-- Footer -->
+        <div class="footer">
+            {{ current_time|dateformat('%H:%M') }}
+        </div>
+    </div>
+    
+    <!-- Controls -->
+    <div class="no-print" style="text-align: center; margin: 5mm;">
+        <button onclick="window.print()" 
+                style="background: black; color: white; border: none; padding: 5mm; font-size: 10pt;">
+            IMPRIMIR
+        </button>
+    </div>
+    
+    <script>
+        if (window.location.search.includes('print=auto')) {
+            setTimeout(() => window.print(), 300);
+        }
+        window.onafterprint = () => setTimeout(() => window.close(), 1000);
+    </script>
+</body>
+</html>

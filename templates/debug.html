@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Debug Tools - Epicuro{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>🔧 Debug Tools - Epicuro</h1>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">📊 Estado del Sistema</div>
+                <div class="card-body">
+                    <p><strong>Hora:</strong> {{ current_time }}</p>
+                    <p><strong>DB:</strong> {{ db_status }}</p>
+                    <p><strong>Total órdenes:</strong> {{ total_orders }}</p>
+                    <p><strong>Órdenes hoy:</strong> {{ orders_today }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">🧪 Tests Rápidos</div>
+                <div class="card-body">
+                    <button class="btn btn-primary mb-2" onclick="epicuroDebug.testPrint()">
+                        🖨️ Test Impresión
+                    </button><br>
+                    <button class="btn btn-success mb-2" onclick="epicuroDebug.systemInfo()">
+                        📋 Info Sistema
+                    </button><br>
+                    <input type="number" id="test-order-id" class="form-control mb-2" placeholder="ID de orden">
+                    <button class="btn btn-warning mb-2" onclick="testOrder()">
+                        🔍 Test Orden
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">💻 Consola de Debug</div>
+                <div class="card-body">
+                    <div id="debug-console" style="background: #000; color: #00ff00; padding: 15px; border-radius: 5px; font-family: monospace; height: 200px; overflow-y: auto;">
+                        Sistema de debug iniciado...<br>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Debug console para verificar estado del frontend
+window.epicuroDebug = {
+    log: function(message) {
+        const console = document.getElementById('debug-console');
+        const timestamp = new Date().toLocaleTimeString();
+        console.innerHTML += `[${timestamp}] ${message}<br>`;
+        console.scrollTop = console.scrollHeight;
+    },
+    
+    testPrint: function() {
+        this.log('🖨️ Testing print function...');
+        window.print();
+    },
+    
+    testAjax: function(orderId, newStatus) {
+        this.log(`🔄 Testing AJAX status change: ${orderId} -> ${newStatus}`);
+        fetch(`/orders/${orderId}/update_status`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: `status=${newStatus}`
+        })
+        .then(r => {
+            this.log(`Response: ${r.status} ${r.statusText}`);
+            return r.text();
+        })
+        .then(data => this.log(`Data: ${data.substring(0, 100)}...`))
+        .catch(e => this.log(`Error: ${e.message}`));
+    },
+    
+    systemInfo: function() {
+        const info = {
+            url: window.location.href,
+            userAgent: navigator.userAgent.substring(0, 50),
+            timestamp: new Date().toISOString(),
+            localTime: new Date().toLocaleString('es-CL')
+        };
+        this.log('🔍 System Info:');
+        Object.entries(info).forEach(([key, value]) => {
+            this.log(`  ${key}: ${value}`);
+        });
+    }
+};
+
+function testOrder() {
+    const orderId = document.getElementById('test-order-id').value;
+    if (!orderId) {
+        epicuroDebug.log('❌ Ingresa un ID de orden válido');
+        return;
+    }
+    
+    epicuroDebug.log(`🔍 Testing order ${orderId}...`);
+    
+    // Test 1: Ver si existe la orden
+    fetch(`/orders/${orderId}`)
+        .then(r => {
+            if (r.ok) {
+                epicuroDebug.log(`✅ Orden ${orderId} existe`);
+                // Test 2: Probar impresión
+                window.open(`/customer-bill/${orderId}`, '_blank');
+                epicuroDebug.log(`🖨️ Abriendo cuenta para impresión`);
+            } else {
+                epicuroDebug.log(`❌ Orden ${orderId} no encontrada`);
+            }
+        })
+        .catch(e => epicuroDebug.log(`❌ Error: ${e.message}`));
+}
+
+// Auto-ejecutar info del sistema
+epicuroDebug.systemInfo();
+epicuroDebug.log('🚀 Epicuro Debug Tools loaded');
+</script>
+{% endblock %}

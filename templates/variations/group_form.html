@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if group %}Editar Grupo de Variación{% else %}Nuevo Grupo de Variación{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="mb-0">
+                {% if group %}
+                Editar Grupo de Variación: {{ group.name }}
+                {% else %}
+                Nuevo Grupo de Variación
+                {% endif %}
+            </h2>
+            <p class="text-muted">
+                {% if group %}
+                Modifica la configuración de este grupo de variación.
+                {% else %}
+                Crea un nuevo grupo de variación para personalizar tus productos.
+                {% endif %}
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('list_variations') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Información del Grupo</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{% if group %}{{ url_for('update_variation_group', group_id=group.id) }}{% else %}{{ url_for('create_variation_group') }}{% endif %}">
+                        <!-- Información básica -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="name" class="form-label">Nombre Interno *</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="name" 
+                                       name="name" 
+                                       value="{{ group.name if group else '' }}" 
+                                       required
+                                       placeholder="ej: proteins">
+                                <small class="form-text text-muted">Nombre técnico para el sistema (sin espacios)</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="display_name" class="form-label">Nombre para Mostrar *</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="display_name" 
+                                       name="display_name" 
+                                       value="{{ group.display_name if group else '' }}" 
+                                       required
+                                       placeholder="ej: Proteínas">
+                                <small class="form-text text-muted">Nombre que verán los usuarios</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Descripción</label>
+                            <textarea class="form-control" 
+                                      id="description" 
+                                      name="description" 
+                                      rows="3"
+                                      placeholder="Descripción opcional del grupo de variación">{{ group.description if group else '' }}</textarea>
+                        </div>
+
+                        <!-- Configuración del grupo -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="required" 
+                                           name="required"
+                                           {% if group and group.required %}checked{% endif %}>
+                                    <label class="form-check-label" for="required">
+                                        <strong>Selección Requerida</strong>
+                                    </label>
+                                    <small class="form-text text-muted d-block">El cliente debe seleccionar una opción</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="multiple_selection" 
+                                           name="multiple_selection"
+                                           {% if group and group.multiple_selection %}checked{% endif %}>
+                                    <label class="form-check-label" for="multiple_selection">
+                                        <strong>Selección Múltiple</strong>
+                                    </label>
+                                    <small class="form-text text-muted d-block">Permite seleccionar varias opciones</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Configuración de selecciones múltiples -->
+                        <div id="multipleConfig" class="row mb-3" style="display: none;">
+                            <div class="col-md-6">
+                                <label for="min_selections" class="form-label">Mínimo de Selecciones</label>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="min_selections" 
+                                       name="min_selections" 
+                                       min="1"
+                                       value="{{ group.min_selections if group else 1 }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="max_selections" class="form-label">Máximo de Selecciones</label>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="max_selections" 
+                                       name="max_selections" 
+                                       min="1"
+                                       value="{{ group.max_selections if group else '' }}"
+                                       placeholder="Sin límite">
+                            </div>
+                        </div>
+
+                        {% if group %}
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="active" 
+                                       name="active"
+                                       {% if group.active %}checked{% endif %}>
+                                <label class="form-check-label" for="active">
+                                    <strong>Grupo Activo</strong>
+                                </label>
+                                <small class="form-text text-muted d-block">Desmarcar para ocultar temporalmente</small>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <hr class="my-4">
+
+                        <!-- Opciones del grupo -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">Opciones del Grupo</h5>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addOption()">
+                                <i class="fas fa-plus"></i> Agregar Opción
+                            </button>
+                        </div>
+
+                        <div id="optionsContainer">
+                            {% if group and group.options %}
+                            {% for option in group.options %}
+                            <div class="option-row mb-3 p-3 border rounded">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <input type="text" 
+                                               class="form-control" 
+                                               name="option_names[]" 
+                                               placeholder="Nombre (ej: chicken)"
+                                               value="{{ option.name }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="text" 
+                                               class="form-control" 
+                                               name="option_displays[]" 
+                                               placeholder="Para mostrar (ej: Pollo)"
+                                               value="{{ option.display_name }}">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" 
+                                                   class="form-control" 
+                                                   name="option_prices[]" 
+                                                   step="0.01"
+                                                   placeholder="0.00"
+                                                   value="{{ option.price_modifier }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeOption(this)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% endif %}
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i>
+                                {% if group %}Actualizar Grupo{% else %}Crear Grupo{% endif %}
+                            </button>
+                            <a href="{{ url_for('list_variations') }}" class="btn btn-secondary ms-2">
+                                Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de ayuda -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-info-circle"></i> Ayuda
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <h6>Ejemplos de Grupos:</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Proteínas:</strong> Pollo, Carne, Vegetariano</li>
+                        <li><strong>Tamaños:</strong> Pequeño, Mediano, Grande</li>
+                        <li><strong>Extras:</strong> Queso, Palta, Tocino</li>
+                        <li><strong>Cocción:</strong> Poco, Medio, Bien cocido</li>
+                    </ul>
+
+                    <hr>
+
+                    <h6>Configuraciones:</h6>
+                    <ul class="small">
+                        <li><strong>Requerido:</strong> El cliente debe elegir</li>
+                        <li><strong>Múltiple:</strong> Puede elegir varias opciones</li>
+                        <li><strong>Modificador de precio:</strong> Suma o resta al precio base</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Configuración de selección múltiple
+document.getElementById('multiple_selection').addEventListener('change', function() {
+    const multipleConfig = document.getElementById('multipleConfig');
+    if (this.checked) {
+        multipleConfig.style.display = 'block';
+    } else {
+        multipleConfig.style.display = 'none';
+    }
+});
+
+// Mostrar configuración múltiple si ya está marcado
+if (document.getElementById('multiple_selection').checked) {
+    document.getElementById('multipleConfig').style.display = 'block';
+}
+
+// Agregar nueva opción
+function addOption() {
+    const container = document.getElementById('optionsContainer');
+    const optionHtml = `
+        <div class="option-row mb-3 p-3 border rounded">
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text" 
+                           class="form-control" 
+                           name="option_names[]" 
+                           placeholder="Nombre (ej: chicken)">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" 
+                           class="form-control" 
+                           name="option_displays[]" 
+                           placeholder="Para mostrar (ej: Pollo)">
+                </div>
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" 
+                               class="form-control" 
+                               name="option_prices[]" 
+                               step="0.01"
+                               placeholder="0.00">
+                    </div>
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeOption(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', optionHtml);
+}
+
+// Remover opción
+function removeOption(button) {
+    button.closest('.option-row').remove();
+}
+
+// Auto-generar nombre para mostrar basado en el nombre interno
+document.addEventListener('input', function(e) {
+    if (e.target.name === 'option_names[]') {
+        const row = e.target.closest('.option-row');
+        const displayInput = row.querySelector('input[name="option_displays[]"]');
+        if (!displayInput.value) {
+            // Capitalizar primera letra
+            displayInput.value = e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1);
+        }
+    }
+});
+</script>
+{% endblock %}
